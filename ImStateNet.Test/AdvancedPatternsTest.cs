@@ -53,7 +53,7 @@ namespace ImStateNet.Test
 
         private void SetValue<T>(InputNode<T> node, T value)
         {
-            (_state, _) = _state.ChangeValue(node, value).Commit();
+            (_state, _) = _state.ChangeValue(node, value).Commit().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public int Result => GetValue(_result);
@@ -66,9 +66,9 @@ namespace ImStateNet.Test
 
         public int Val2 => GetValue(_val2);
 
-        public void SetVal1AndVal2(int val1, int val2)
+        public async Task SetVal1AndVal2(int val1, int val2)
         {
-            (_state, _) = _state.ChangeValue(_val1, val1).ChangeValue(_val2, val2).Commit();
+            (_state, _) = await _state.ChangeValue(_val1, val1).ChangeValue(_val2, val2).Commit();
         }
     }
 
@@ -76,7 +76,7 @@ namespace ImStateNet.Test
     public class StateMutTests
     {
         [TestMethod]
-        public void TestStateMut()
+        public async Task TestStateMut()
         {
             var state = new StateMut();
             Assert.AreEqual(3, state.Result);
@@ -86,13 +86,13 @@ namespace ImStateNet.Test
             state.Val1 = 3;
             Assert.AreEqual(5, state.Result);
 
-            state.SetVal1AndVal2(4, 5);
+            await state.SetVal1AndVal2(4, 5);
             Assert.AreEqual(9, state.Result);
         }
 
         [TestMethod]
         [Ignore]
-        public void TestMergeChanges()
+        public async Task TestMergeChanges()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
@@ -111,7 +111,7 @@ namespace ImStateNet.Test
             Assert.AreEqual(6, merged.GetValue(val2));
             Assert.AreEqual(3, merged.GetValue(val3));
 
-            (merged, _) = merged.Commit();
+            (merged, _) = await merged.Commit();
 
             var conflict = state1.ChangeValue(val2, 7);
 
@@ -122,7 +122,7 @@ namespace ImStateNet.Test
 
         [TestMethod]
         [Ignore]
-        public void TestRebaseChanges()
+        public async Task TestRebaseChanges()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
@@ -131,11 +131,11 @@ namespace ImStateNet.Test
             var result = builder.AddCalculation(new SumNode<int>(new List<AbstractNode<int>> { val1, val2, val3 }));
             var state1 = builder.Build();
 
-            var (state2, _) = state1.ChangeValue(val1, 5).Commit();
+            var (state2, _) = await state1.ChangeValue(val1, 5).Commit();
 
             var state3 = state1.ChangeValue(val2, 6);
 
-            var (state4, _) = state2.ChangeValue(val3, 3).Commit();
+            var (state4, _) = await state2.ChangeValue(val3, 3).Commit();
 
             var rebased = StateMut.RebaseChanges(state3, state4);
 

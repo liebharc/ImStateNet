@@ -43,7 +43,7 @@
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 
-        public void Commit() => (State, _) = State.Commit();
+        public async Task Commit() => (State, _) = await State.Commit();
 
         public int NumberOfChanges() => State.Changes.Count;
     }
@@ -52,7 +52,7 @@
     public class AdditionalNodeTests
     {
         [TestMethod]
-        public void TestValidState()
+        public async Task TestValidState()
         {
             var state = new SimpleSumState();
             var initialId = state.State.VersionId;
@@ -60,7 +60,7 @@
 
             state.SetValue(state.Val1, 3);
             Assert.AreEqual(initialId, state.State.VersionId);
-            state.Commit();
+            await state.Commit();
             Assert.AreNotEqual(initialId, state.State.VersionId);
 
             Assert.AreEqual(5, state.GetValue(state.Calc));
@@ -76,17 +76,17 @@
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = new InputNode<int>();
             var result = builder.AddCalculation(new LambdaCalcNode<int>(x => x[0] + x[1], new[] { val1, val2 }));
-            Assert.ThrowsException<Exception>(() => builder.Build());
+            Assert.ThrowsException<KeyNotFoundException>(() => builder.Build());
         }
 
         [TestMethod]
-        public void TestChangeMinMaxNode()
+        public async Task TestChangeMinMaxNode()
         {
             var state = new SimpleSumState();
             Assert.AreEqual(2, state.GetValue(state.Val2));
 
             state.SetValue(state.Val2, 6);
-            state.Commit();
+            await state.Commit();
 
             Assert.AreEqual(5, state.GetValue(state.Val2));
         }
@@ -114,7 +114,7 @@
         }
 
         [TestMethod]
-        public void TestExample()
+        public async Task TestExample()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
@@ -130,7 +130,7 @@
             state = state.ChangeValue(val1, 1);
             Assert.IsTrue(state.IsConsistent());
 
-            (state, var changes) = state.ChangeValue(val1, 2).Commit();
+            (state, var changes) = await state.ChangeValue(val1, 2).Commit();
             Assert.IsTrue(state.IsConsistent());
             Assert.AreEqual(4, state.GetValue(result));
             CollectionAssert.AreEquivalent(new INode[] { val1, result }, changes);

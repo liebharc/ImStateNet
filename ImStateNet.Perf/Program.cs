@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 public class Program
 {
-    public static void Main()
+    public static async Task Main()
     {
         var startTime = Stopwatch.StartNew();
 
@@ -19,11 +19,11 @@ public class Program
         {
             if (i % 5 == 0)
             {
-                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)i));
+                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i % 10)));
             }
             else if (i % 5 == 1)
             {
-                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)i + 1));
+                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i + 1) % 10));
             }
             else if (i % 5 == 2)
             {
@@ -61,7 +61,7 @@ public class Program
             change++;
             if (change >= batchSize)
             {
-                (state, _) = state.Commit();
+                (state, _) = await state.Commit();
                 numberOfCommits++;
                 change = 0;
             }

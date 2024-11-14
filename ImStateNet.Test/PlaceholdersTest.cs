@@ -14,7 +14,7 @@
             var val2 = builder.AddInput(new InputNode<int>(), 2);
             builder.AddCalculation(new PlaceholderNode<int>());
             builder.AddCalculation(new SumNode<int>(new AbstractNode<int>[] { val1, val2 }));
-            Assert.ThrowsException<Exception>(() => builder.Build());
+            Assert.ThrowsException<InvalidOperationException>(() => builder.Build());
         }
 
         [TestMethod]
@@ -38,7 +38,7 @@
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var placeholder = builder.AddCalculation(new PlaceholderNode<int>());
             placeholder.Assign(new ProductNode<int>(new AbstractNode<int>[] { val1, placeholder }));
-            Assert.ThrowsException<Exception>(() => builder.Build());
+            Assert.ThrowsException<InvalidOperationException>(() => builder.Build());
         }
 
         [TestMethod]
@@ -51,7 +51,7 @@
             var result = builder.AddCalculation(new SumNode<int>(new AbstractNode<int>[] { placeholder, val2 }));
             placeholder.Assign(new ProductNode<int>(new AbstractNode<int>[] { val1, result }));
 
-            Assert.ThrowsException<Exception>(() => builder.Build());
+            Assert.ThrowsException<InvalidOperationException>(() => builder.Build());
         }
     }
 
