@@ -50,6 +50,23 @@
         }
     }
 
+    public class LazyNode<U> : DerivedNode<U> where U : struct
+    {
+        public LazyNode(DerivedNode<U> innerNode)
+            : base(innerNode.Dependencies.Cast<INode>().ToList(), innerNode.Name)
+        {
+            InnerNode = innerNode;
+            IsLazy = true;
+        }
+
+        public DerivedNode<U> InnerNode { get; }
+
+        public override U Calculate(IReadOnlyList<object> inputs)
+        {
+            return InnerNode.Calculate(inputs);
+        }
+    }
+
     public class PlaceholderNode<U> : DerivedNode<U> where U : struct
     {
         private DerivedNode<U> _node;

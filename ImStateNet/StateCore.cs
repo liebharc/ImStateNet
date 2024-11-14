@@ -1,12 +1,9 @@
 ﻿namespace ImStateNet
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
-    using System.Runtime.Intrinsics.Arm;
-    using System.Security.AccessControl;
 
     public interface INode
     {
@@ -61,19 +58,37 @@
     {
         IReadOnlyList<INode> Dependencies { get; }
 
+        bool IsLazy { get; }
+
         object Calculate(IReadOnlyList<object> inputs);
     }
 
     public abstract class DerivedNode<T> : AbstractNode<T>, IDerivedNode
     {
+        private static bool AnyLazyDependencies(IReadOnlyList<INode> dependencies)
+        {
+            foreach (var dependency in dependencies)
+            {
+                if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         protected IReadOnlyList<INode> _dependencies;
 
         protected DerivedNode(IReadOnlyList<INode> dependencies, string? name = null) : base(name)
         {
             _dependencies = dependencies;
+            IsLazy = AnyLazyDependencies(dependencies);
         }
 
         public IReadOnlyList<INode> Dependencies => _dependencies;
+
+        public bool IsLazy { get; protected set; } = false;
 
         public abstract T Calculate(IReadOnlyList<object> inputs);
 
@@ -85,8 +100,10 @@
 
     public class State
     {
+        private static readonly object LazyValue = new object();
+        private readonly object LazyValueLock = new object();
         private readonly ImmutableList<INode> _nodes;
-        private readonly ImmutableDictionary<INode, object> _values;
+        private ImmutableDictionary<INode, object> _values;
         private readonly ImmutableHashSet<INode> _changes;
         private readonly ImmutableDictionary<INode, object> _initialValues;
         private readonly Guid _versionId;
@@ -121,16 +138,51 @@
 
             var changes = _changes;
             if (old != null && node.AreValuesEqual(oldValue, newValue))
-                changes = _changes.Remove(node);
+                changes = changes.Remove(node);
             else
-                changes = _changes.Add(node);
+                changes = changes.Add(node);
 
             return new State(Nodes, values, changes, _initialValues, _levels, _versionId);
         }
 
         public T GetValue<T>(AbstractNode<T> node)
         {
-            return (T)_values[node];
+            var value = _values[node];
+            if (value != LazyValue)
+            {
+                return (T)_values[node];
+            }
+
+            lock (LazyValueLock)
+            {
+                var toBeCalculated = GetAllDependencies((IDerivedNode)node);
+                CalculateListOfLazyNodes(toBeCalculated);
+                return (T)_values[node];
+            }
+        }
+
+        private IList<IDerivedNode> GetAllDependencies(IDerivedNode node)
+        {
+            var result = new List<IDerivedNode>();
+            foreach (var dependency in node.Dependencies)
+            {
+                if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy && _values[derivedNode] == LazyValue)
+                {
+                    result.AddRange(GetAllDependencies(derivedNode));
+                }
+            }
+
+            result.Add(node);
+            return result;
+        }
+
+        private void CalculateListOfLazyNodes(IList<IDerivedNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                var newValue = node.Calculate(node.Dependencies.Select(dep => _values[dep]).ToList());
+                _values = _values.SetItem(node, newValue);
+            }
         }
 
         private static IReadOnlyList<IReadOnlyList<IDerivedNode>> GetLevels(IEnumerable<INode> nodes)
@@ -172,7 +224,8 @@
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
 
             var values = _values;
-            var changes = new ConcurrentBag<INode>(_changes);
+            var changes = _changes;
+            var lockObj = new object();
 
             foreach (var level in _levels)
             {
@@ -183,20 +236,37 @@
 
                 await Parallel.ForEachAsync(level, async (node, _) =>
                 {
-                    var anyDepsChanged = !_changes.Intersect(node.Dependencies).IsEmpty;
+                    if (node.IsLazy)
+                    {
+                        lock (lockObj)
+                        {
+                            values = values.SetItem(node, LazyValue);
+                            // We can't tell if the node has changed as it's lazy
+                        }
+
+                        return;
+                    }
+
+                    var anyDepsChanged = !changes.Intersect(node.Dependencies).IsEmpty;
                     if (anyDepsChanged)
                     {
                         var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
                         var oldValue = _initialValues.TryGetValue(node, out var old) ? old : null;
+                        var haveValuesChanged = !node.AreValuesEqual(oldValue, newValue);
                         values = values.SetItem(node, newValue);
 
-                        if (!node.AreValuesEqual(oldValue, newValue))
-                            changes.Add(node);
+                        lock (lockObj)
+                        {
+                            if (haveValuesChanged)
+                            {
+                                changes = changes.Add(node);
+                            }
+                        }
                     }
                 });
             }
 
-            return (new State(Nodes, values, ImmutableHashSet<INode>.Empty, values, _levels), changes.ToImmutableHashSet());
+            return (new State(Nodes, values, ImmutableHashSet<INode>.Empty, values, _levels), changes);
         }
 
         public bool IsConsistent() => _changes.IsEmpty;
