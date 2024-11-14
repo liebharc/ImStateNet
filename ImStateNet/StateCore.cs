@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
+    using System.Threading.Tasks;
 
     public interface INode
     {
@@ -219,13 +220,18 @@
             }
         }
 
-        public async Task<(State, ImmutableHashSet<INode>)> Commit()
+        public async Task<(State, ImmutableHashSet<INode>)> Commit(CancellationToken? cancellationToken = null)
         {
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
 
             var values = _values;
             var changes = _changes;
+            var unprocessedChanges = ImmutableHashSet<INode>.Empty;
             var lockObj = new object();
+
+            var cancellation = cancellationToken ?? CancellationToken.None;
+
+            bool parallel = _nodes.Count > 100;
 
             foreach (var level in _levels)
             {
@@ -234,39 +240,63 @@
                     continue;
                 }
 
-                await Parallel.ForEachAsync(level, async (node, _) =>
+                if (parallel && !cancellation.IsCancellationRequested)
                 {
-                    if (node.IsLazy)
+                    await Parallel.ForEachAsync(level, async (node, _) => ProcessNode(node));
+                }
+                else
+                {
+                    foreach (var node in level)
                     {
-                        lock (lockObj)
-                        {
-                            values = values.SetItem(node, LazyValue);
-                            // We can't tell if the node has changed as it's lazy
-                        }
-
-                        return;
+                        ProcessNode(node);
                     }
-
-                    var anyDepsChanged = !changes.Intersect(node.Dependencies).IsEmpty;
-                    if (anyDepsChanged)
-                    {
-                        var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
-                        var oldValue = _initialValues.TryGetValue(node, out var old) ? old : null;
-                        var haveValuesChanged = !node.AreValuesEqual(oldValue, newValue);
-                        values = values.SetItem(node, newValue);
-
-                        lock (lockObj)
-                        {
-                            if (haveValuesChanged)
-                            {
-                                changes = changes.Add(node);
-                            }
-                        }
-                    }
-                });
+                }
             }
 
-            return (new State(Nodes, values, ImmutableHashSet<INode>.Empty, values, _levels), changes);
+            return (new State(Nodes, values, unprocessedChanges, values, _levels), changes);
+
+
+
+            void ProcessNode(IDerivedNode node)
+            {
+                if (node.IsLazy)
+                {
+                    lock (lockObj)
+                    {
+                        values = values.SetItem(node, LazyValue);
+                        // We can't tell if the node has changed as it's lazy
+                    }
+                    return;
+                }
+
+                var anyDepsChanged = !changes.Intersect(node.Dependencies).IsEmpty;
+                if (!anyDepsChanged)
+                {
+                    return;
+                }
+
+                if (cancellation.IsCancellationRequested)
+                {
+                    lock (lockObj)
+                    {
+                        unprocessedChanges.Add(node);
+                    }
+                    return;
+                }
+
+                var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
+                var oldValue = _initialValues.TryGetValue(node, out var old) ? old : null;
+                var haveValuesChanged = !node.AreValuesEqual(oldValue, newValue);
+                values = values.SetItem(node, newValue);
+
+                lock (lockObj)
+                {
+                    if (haveValuesChanged)
+                    {
+                        changes = changes.Add(node);
+                    }
+                }
+            }
         }
 
         public bool IsConsistent() => _changes.IsEmpty;
