@@ -134,11 +134,11 @@
         public State ChangeValue<T>(InputNode<T> node, T newValue)
         {
             newValue = node.Validate(newValue);
-            var oldValue = _initialValues.TryGetValue(node, out var old) ? (T)old : default;
+            var oldValue = _initialValues.TryGetValue(node, out var old);
             var values = _values.SetItem(node, newValue);
 
             var changes = _changes;
-            if (old != null && node.AreValuesEqual(oldValue, newValue))
+            if (old != null && oldValue && node.AreValuesEqual((T)old, newValue))
                 changes = changes.Remove(node);
             else
                 changes = changes.Add(node);
@@ -148,8 +148,8 @@
 
         public T GetValue<T>(AbstractNode<T> node)
         {
-            var value = _values[node];
-            if (value != LazyValue)
+            bool hasValue = _values.TryGetValue(node, out var value);
+            if (hasValue && value != LazyValue)
             {
                 return (T)_values[node];
             }
@@ -167,7 +167,7 @@
             var result = new List<IDerivedNode>();
             foreach (var dependency in node.Dependencies)
             {
-                if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy && _values[derivedNode] == LazyValue)
+                if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy && (!_values.TryGetValue(node, out var value) || value == LazyValue))
                 {
                     result.AddRange(GetAllDependencies(derivedNode));
                 }
@@ -265,8 +265,8 @@
                 }
             }
 
-            return (new State(Nodes, values, unprocessedChanges, values, _levels), changes);
-
+            var newState = new State(Nodes, values, unprocessedChanges, values, _levels);
+            return (newState, changes);
 
 
             IntermediateCommitResult ProcessNode(IDerivedNode node)
@@ -283,7 +283,7 @@
                     };
                 }
 
-                var anyDepsChanged = !changes.Intersect(node.Dependencies).IsEmpty;
+                var anyDepsChanged = changes.Contains(node) || !changes.Intersect(node.Dependencies).IsEmpty;
                 if (!anyDepsChanged)
                 {
                     return new IntermediateCommitResult
