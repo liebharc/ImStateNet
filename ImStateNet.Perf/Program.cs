@@ -1,13 +1,10 @@
 ﻿using ImStateNet;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 
 public class Program
 {
-    public static async Task Main()
+    public static void Main()
     {
         var startTime = Stopwatch.StartNew();
 
@@ -19,31 +16,34 @@ public class Program
         {
             if (i % 5 == 0)
             {
-                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i % 10)));
+                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i % 5)));
             }
             else if (i % 5 == 1)
             {
-                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i + 1) % 10));
+                nodes.Add(builder.AddInput(new InputNode<long>($"input-{i}"), (long)(i + 1) % 5));
             }
             else if (i % 5 == 2)
             {
-                var randomInput = (AbstractNode<long>)nodes[random.Next(nodes.Count)];
-                var incrementNode = new LambdaCalcNode<long>(x => x[0] + random.Next(1, 11), new[] { randomInput }, $"lambda-{i}");
+                var randomInput = nodes[random.Next(nodes.Count)];
+                var randomOffset = random.Next(1, 11);
+                var incrementNode = new LambdaCalcNode<long>(x => x[0] + randomOffset, new[] { randomInput }, $"lambda-{i}");
                 nodes.Add(builder.AddCalculation(incrementNode));
             }
             else if (i % 5 == 3)
             {
-                var randomInputs = Enumerable.Range(0, random.Next(1, 6)).Select(_ => nodes[random.Next(nodes.Count)]).ToArray();
+                var randomSelection = random.Next(nodes.Count);
+                var randomInputs = Enumerable.Range(0, random.Next(1, 6)).Select(_ => nodes[randomSelection]).ToArray();
                 nodes.Add(builder.AddCalculation(new SumNode<long>(randomInputs, $"sum-{i}")));
             }
             else
             {
-                var randomInputs = Enumerable.Range(0, random.Next(1, 6)).Select(_ => nodes[random.Next(nodes.Count)]).ToArray();
+                var randomSelection = random.Next(nodes.Count);
+                var randomInputs = Enumerable.Range(0, random.Next(1, 6)).Select(_ => nodes[randomSelection]).ToArray();
                 nodes.Add(builder.AddCalculation(new ProductNode<long>(randomInputs, $"product-{i}")));
             }
         }
 
-        var inputs = nodes.OfType<InputNode<long>>().ToDictionary(node => node, _ => random.Next(0, 101));
+        var inputs = nodes.OfType<InputNode<long>>().ToDictionary(node => node, _ => random.Next(0, 21));
         var state = builder.Build();
 
         startTime.Stop();
@@ -61,7 +61,7 @@ public class Program
             change++;
             if (change >= batchSize)
             {
-                (state, _) = await state.Commit();
+                (state, _) = state.Commit();
                 numberOfCommits++;
                 change = 0;
             }
@@ -69,5 +69,7 @@ public class Program
 
         startTime.Stop();
         Console.WriteLine($"Update time: {startTime.Elapsed.TotalSeconds} seconds for {numberOfCommits} commits");
+        var firstSumNode = nodes.OfType<SumNode<long>>().First();
+        Console.WriteLine("Result of first sum: " + state.GetValue(firstSumNode));
     }
 }

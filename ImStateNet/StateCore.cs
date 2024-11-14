@@ -220,7 +220,7 @@
             }
         }
 
-        public async Task<(State, ImmutableHashSet<INode>)> Commit(CancellationToken? cancellationToken = null)
+        public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null)
         {
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
 
@@ -240,16 +240,28 @@
                     continue;
                 }
 
+
+                IEnumerable<IntermediateCommitResult> nodesInThisLevel;
                 if (parallel && !cancellation.IsCancellationRequested)
                 {
-                    await Parallel.ForEachAsync(level, async (node, _) => ProcessNode(node));
+                    nodesInThisLevel = level.AsParallel().Select(ProcessNode);
                 }
                 else
                 {
-                    foreach (var node in level)
+                    nodesInThisLevel = level.Select(ProcessNode);
+                }
+
+                foreach (var result in nodesInThisLevel) {
+                    if (result.IsUnprocessed)
                     {
-                        ProcessNode(node);
+                        unprocessedChanges = unprocessedChanges.Add(result.Node);
                     }
+                    else if (result.HasChanged)
+                    {
+                        values = values.SetItem(result.Node, result.NewValue);
+                        changes = changes.Add(result.Node);
+                    }
+
                 }
             }
 
@@ -257,45 +269,53 @@
 
 
 
-            void ProcessNode(IDerivedNode node)
+            IntermediateCommitResult ProcessNode(IDerivedNode node)
             {
                 if (node.IsLazy)
                 {
-                    lock (lockObj)
+                    return new IntermediateCommitResult
                     {
-                        values = values.SetItem(node, LazyValue);
+                        Node = node,
+                        NewValue = LazyValue,
                         // We can't tell if the node has changed as it's lazy
-                    }
-                    return;
+                        HasChanged = false,
+                        IsUnprocessed = false
+                    };
                 }
 
                 var anyDepsChanged = !changes.Intersect(node.Dependencies).IsEmpty;
                 if (!anyDepsChanged)
                 {
-                    return;
+                    return new IntermediateCommitResult
+                    {
+                        Node = node,
+                        NewValue = null,
+                        HasChanged = false,
+                        IsUnprocessed = false
+                    };
                 }
 
                 if (cancellation.IsCancellationRequested)
                 {
-                    lock (lockObj)
+                    return new IntermediateCommitResult
                     {
-                        unprocessedChanges.Add(node);
-                    }
-                    return;
+                        Node = node,
+                        NewValue = null,
+                        HasChanged = false,
+                        IsUnprocessed = true
+                    };
                 }
 
                 var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
-                var oldValue = _initialValues.TryGetValue(node, out var old) ? old : null;
-                var haveValuesChanged = !node.AreValuesEqual(oldValue, newValue);
-                values = values.SetItem(node, newValue);
-
-                lock (lockObj)
+                var oldValue = _initialValues.TryGetValue(node, out var old);
+                var haveValuesChanged = !oldValue || !node.AreValuesEqual(old, newValue);
+                return new IntermediateCommitResult
                 {
-                    if (haveValuesChanged)
-                    {
-                        changes = changes.Add(node);
-                    }
-                }
+                    Node = node,
+                    NewValue = newValue,
+                    HasChanged = haveValuesChanged,
+                    IsUnprocessed = false
+                };
             }
         }
 
@@ -370,11 +390,19 @@
             foreach (var node in nodes.OfType<IDerivedNode>())
             {
                 node.OnBuild();
-                _initialValues[node] = node.Calculate(node.Dependencies.Select(dep => _initialValues[dep]).ToList());
             }
 
-            return new State(nodes.ToImmutableList(), _initialValues.ToImmutableDictionary());
+            var state = new State(nodes.ToImmutableList(), _initialValues.ToImmutableDictionary(), changes: nodes.ToImmutableHashSet());
+            return state.Commit().Item1;
         }
+    }
+
+    public readonly struct IntermediateCommitResult
+    {
+        public INode Node { get; init; }
+        public bool HasChanged { get; init; }
+        public bool IsUnprocessed { get; init; }
+        public object? NewValue { get; init; }
     }
 
 }

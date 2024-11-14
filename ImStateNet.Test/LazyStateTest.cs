@@ -29,7 +29,7 @@
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 
-        public async Task Commit() => (State, _) = await State.Commit();
+        public void Commit() => (State, _) = State.Commit();
 
         public int NumberOfChanges() => State.Changes.Count;
     }
@@ -38,12 +38,12 @@
     public class LazyStateTest
     {
         [TestMethod]
-        public async Task TestValidState()
+        public void TestValidState()
         {
             var state = new LazySumState();
 
             state.SetValue(state.Val1, 3);
-            await state.Commit();
+            state.Commit();
 
             Assert.AreEqual(11, state.GetValue(state.FinalSum));
             Assert.AreEqual(5, state.GetValue(state.Sum));
@@ -51,13 +51,13 @@
         }
 
         [TestMethod]
-        public async Task TestChangeMinMaxNode()
+        public void TestChangeMinMaxNode()
         {
             var state = new LazySumState();
             Assert.AreEqual(2, state.GetValue(state.Val2));
 
             state.SetValue(state.Val2, 6);
-            await state.Commit();
+            state.Commit();
 
             Assert.AreEqual(5, state.GetValue(state.Val2));
         }
