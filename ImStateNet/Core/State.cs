@@ -9,33 +9,30 @@
     {
         private static readonly object LazyValue = new object();
         private readonly object LazyValueLock = new object();
-        private readonly ImmutableList<INode> _nodes;
+        private readonly CalculationNodesNetwork _metaInfo;
         private ImmutableDictionary<INode, object> _values;
         private readonly ImmutableHashSet<INode> _changes;
         private readonly ImmutableDictionary<INode, object> _initialValues;
         private readonly Guid _versionId;
-        private readonly IReadOnlyList<IReadOnlyList<IDerivedNode>> _levels;
 
         public State(
-            ImmutableList<INode> nodes,
+            CalculationNodesNetwork metaInfo,
             ImmutableDictionary<INode, object> values,
             ImmutableHashSet<INode>? changes = null,
             ImmutableDictionary<INode, object>? initialValues = null,
-            IReadOnlyList<IReadOnlyList<IDerivedNode>>? levels = null,
             Guid? versionId = null)
         {
-            _nodes = nodes;
             _changes = changes ?? ImmutableHashSet<INode>.Empty;
+            _metaInfo = metaInfo;
             _values = values;
             _initialValues = initialValues ?? values;
             _versionId = versionId ?? Guid.NewGuid();
-            _levels = levels ?? GetLevels(nodes);
         }
 
         public Guid VersionId => _versionId;
         public ImmutableHashSet<INode> Changes => _changes;
 
-        public ImmutableList<INode> Nodes => _nodes;
+        public ImmutableList<INode> Nodes => _metaInfo.Nodes;
 
         public State ChangeValue<T>(InputNode<T> node, T newValue)
         {
@@ -60,7 +57,7 @@
             else
                 changes = changes.Add(node);
 
-            return new State(Nodes, values, changes, _initialValues, _levels, _versionId);
+            return new State(_metaInfo, values, changes, _initialValues, _versionId);
         }
 
         public T GetValue<T>(AbstractNode<T> node)
@@ -113,39 +110,6 @@
             }
         }
 
-        private static IReadOnlyList<IReadOnlyList<IDerivedNode>> GetLevels(IEnumerable<INode> nodes)
-        {
-            var levels = new List<List<IDerivedNode>>();
-            var nodeLevels = new Dictionary<INode, int>();
-
-            foreach (var node in nodes)
-            {
-                if (node is not IDerivedNode derivedNode)
-                {
-                    continue;
-                }
-
-                int level = derivedNode.Dependencies.Max(dep => GetLevel(dep) + 1);
-                nodeLevels[node] = level;
-
-                while (levels.Count <= level)
-                    levels.Add(new List<IDerivedNode>());
-
-                levels[level].Add(derivedNode);
-            }
-
-            return levels;
-
-            int GetLevel(INode node)
-            {
-                if (node is IDerivedNode derivedNode)
-                {
-                    return nodeLevels[node];
-                }
-
-                return 0;
-            }
-        }
         public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null, bool parallel = true)
         {
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
@@ -157,7 +121,7 @@
 
             var cancellation = cancellationToken ?? CancellationToken.None;
 
-            foreach (var level in _levels)
+            foreach (var level in _metaInfo.Levels)
             {
                 if (!level.Any())
                 {
@@ -190,9 +154,8 @@
                 }
             }
 
-            var newState = new State(Nodes, values, unprocessedChanges, values, _levels);
+            var newState = new State(_metaInfo, values, unprocessedChanges, values);
             return (newState, changes);
-
 
             IntermediateCommitResult ProcessNode(IDerivedNode node)
             {
@@ -260,7 +223,8 @@
 
         public StateBuilder ChangeConfiguration()
         {
-            return new StateBuilder(_nodes, _initialValues, _nodes.Where(n => !_changes.Contains(n)).ToHashSet());
+            var nodes = _metaInfo.Nodes;
+            return new StateBuilder(nodes, _initialValues, nodes.Where(n => !_changes.Contains(n)).ToHashSet());
         }
     }
     public readonly struct IntermediateCommitResult

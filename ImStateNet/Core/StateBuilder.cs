@@ -114,7 +114,8 @@
                 node.OnBuild();
             }
 
-            var state = new State(nodes.ToImmutableList(), _initialValues.ToImmutableDictionary(), changes: nodes.Where(n => !_nodesWithInitialValues.Contains(n)).ToImmutableHashSet());
+            var metaInfo = new CalculationNodesNetwork(nodes.ToImmutableList());
+            var state = new State(metaInfo, _initialValues.ToImmutableDictionary(), changes: nodes.Where(n => !_nodesWithInitialValues.Contains(n)).ToImmutableHashSet());
             if (skipCalculation)
             {
                 return state;
