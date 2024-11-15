@@ -21,21 +21,35 @@
             _name = name ?? Guid.NewGuid().ToString();
         }
 
+        /// <summary>
+        /// Called when the state is built, a node can be part of multiple states.
+        /// </summary>
         public virtual void OnBuild()
         {
-            // Called when the state is built, a node can be part of multiple states.
         }
 
         public string Name => _name;
 
+        /// <summary>
+        /// Compares two values and returns true if they are equal.
+        /// Can be overridden by subclasses to provide a custom comparison method, e.g., by using a tolerance for floats.
+        /// </summary>
         public virtual bool AreValuesEqual(T value1, T value2)
         {
-            // Compares two values and returns true if they are equal.
-            // Can be overridden by subclasses to provide a custom comparison method, e.g., by using a tolerance for floats.
             return EqualityComparer<T>.Default.Equals(value1, value2);
         }
 
         public override string ToString() => _name;
+
+        public sealed override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public sealed override bool Equals(object? obj)
+        {
+            return base.Equals(obj);
+        }
 
         bool INode.AreValuesEqual(object value1, object value2)
         {
@@ -52,9 +66,11 @@
     {
         public InputNode(string? name = null) : base(name) { }
 
+        /// <summary>
+        /// Validates the value before setting it. It can coerce the value to a valid one or throw an exception if the value is invalid.
+        /// </summary>
         public virtual T Validate(T value)
         {
-            // Validates the value before setting it. It can coerce the value to a valid one or throw an exception if the value is invalid.
             return value;
         }
 
@@ -98,8 +114,13 @@
 
         public IReadOnlyList<INode> Dependencies => _dependencies;
 
-        public bool IsLazy { get; protected set; } = false;
+        public bool IsLazy { get; init; }
 
+        /// <summary>
+        /// Calculates the value of the node based on the inputs.
+        /// The caller guarantees that the inputs are in the same order
+        /// as the dependencies.
+        /// </summary>
         public abstract T Calculate(IReadOnlyList<object> inputs);
 
         object IDerivedNode.Calculate(IReadOnlyList<object> inputs)
