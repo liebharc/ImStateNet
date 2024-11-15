@@ -15,8 +15,13 @@ namespace ImStateNet.Test
             if (!areChangesDisjoint)
                 throw new InvalidOperationException("Changes are not disjoint");
 
-            /*foreach (var change in state2.Changes)
-                state1 = state1.ChangeValue(change, state2.GetValue(change));*/
+            foreach (var change in state2.Changes)
+            {
+                if (change is IInputNode inputNode)
+                {
+                    state1 = state1.ChangeObjectValue(inputNode, state2.GetObjValue(change));
+                }
+            }
 
             return state1;
         }
@@ -29,8 +34,13 @@ namespace ImStateNet.Test
             if (!baseState.IsConsistent())
                 throw new InvalidOperationException("Base state must not have any uncommitted changes");
 
-            /*foreach (var change in state.Changes)
-                baseState = baseState.ChangeValue(change, state.GetValue(change));*/
+            foreach (var change in state.Changes)
+            {
+                if (change is IInputNode inputNode)
+                {
+                    baseState = baseState.ChangeObjectValue(inputNode, state.GetObjValue(change));
+                }
+            }
 
             return baseState;
         }
@@ -91,7 +101,6 @@ namespace ImStateNet.Test
         }
 
         [TestMethod]
-        [Ignore]
         public void TestMergeChanges()
         {
             var builder = new StateBuilder();
@@ -121,7 +130,6 @@ namespace ImStateNet.Test
         }
 
         [TestMethod]
-        [Ignore]
         public void TestRebaseChanges()
         {
             var builder = new StateBuilder();

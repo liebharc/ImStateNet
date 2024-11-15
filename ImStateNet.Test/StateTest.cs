@@ -76,7 +76,7 @@
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = new InputNode<int>();
             var result = builder.AddCalculation(new LambdaCalcNode<int>(x => x[0] + x[1], new[] { val1, val2 }));
-            Assert.ThrowsException<KeyNotFoundException>(() => builder.Build());
+            Assert.ThrowsException<KeyNotFoundException>(() => builder.Build(skipCalculation: true).Commit(parallel: false));
         }
 
         [TestMethod]

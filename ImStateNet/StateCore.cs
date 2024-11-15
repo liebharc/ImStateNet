@@ -4,8 +4,6 @@
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
-    using System.Threading.Tasks;
-    using System.Xml.XPath;
 
     public interface INode
     {
@@ -45,7 +43,12 @@
         }
     }
 
-    public class InputNode<T> : AbstractNode<T>
+    public interface IInputNode : INode
+    {
+        object Validate(object value);
+    }
+
+    public class InputNode<T> : AbstractNode<T>, IInputNode
     {
         public InputNode(string? name = null) : base(name) { }
 
@@ -53,6 +56,11 @@
         {
             // Validates the value before setting it. It can coerce the value to a valid one or throw an exception if the value is invalid.
             return value;
+        }
+
+        object IInputNode.Validate(object value)
+        {
+            return Validate((T)value);
         }
     }
 
@@ -134,12 +142,23 @@
 
         public State ChangeValue<T>(InputNode<T> node, T newValue)
         {
+            return ChangeObjectValue(node, newValue);
+        }
+
+        /// <summary>
+        /// Sets the value of a node. Prefer using <see cref="ChangeValue{T}(InputNode{T}, T)"/> instead.
+        /// </summary>
+        /// <param name="node">A node</param>
+        /// <param name="newValue">The new value for the node</param>
+        /// <returns>A new state, call <see cref="Commit(CancellationToken?, bool)"/> to perform the calculation of all dependencies. </returns>
+        public State ChangeObjectValue(IInputNode node, object newValue)
+        {
             newValue = node.Validate(newValue);
             var oldValue = _initialValues.TryGetValue(node, out var old);
             var values = _values.SetItem(node, newValue);
 
             var changes = _changes;
-            if (old != null && oldValue && node.AreValuesEqual((T)old, newValue))
+            if (old != null && oldValue && node.AreValuesEqual(old, newValue))
                 changes = changes.Remove(node);
             else
                 changes = changes.Add(node);
@@ -149,19 +168,30 @@
 
         public T GetValue<T>(AbstractNode<T> node)
         {
+            return (T)GetObjValue(node);
+        }
+
+        /// <summary>
+        /// Gets the value of a node. Prefer using <see cref="GetValue{T}(AbstractNode{T})"/> instead.
+        /// </summary>
+        /// <param name="node">A node</param>
+        /// <returns>The current value of the node</returns>
+        public object GetObjValue(INode node)
+        {
             bool hasValue = _values.TryGetValue(node, out var value);
             if (hasValue && value != LazyValue)
             {
-                return (T)_values[node];
+                return _values[node];
             }
 
             lock (LazyValueLock)
             {
                 var toBeCalculated = GetAllDependencies((IDerivedNode)node);
                 CalculateListOfLazyNodes(toBeCalculated);
-                return (T)_values[node];
+                return _values[node];
             }
         }
+
 
         private IList<IDerivedNode> GetAllDependencies(IDerivedNode node)
         {
