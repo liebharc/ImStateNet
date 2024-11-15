@@ -115,7 +115,7 @@ namespace ImStateNet.Test
             lock (_lock)
             {
                 var builder = _state.ChangeConfiguration();
-                builder.RemoveNodeAndAllDependencies(node);
+                builder.RemoveNodeAndAllDependents(node);
                 _state = builder.Build();
             }
         }

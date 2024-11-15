@@ -34,7 +34,7 @@ namespace ImStateNet.Test
             var state = builder.Build();
 
             builder = state.ChangeConfiguration();
-            builder.RemoveNodeAndAllDependencies(val1);
+            builder.RemoveNodeAndAllDependents(val1);
             CollectionAssert.AreEquivalent(builder.Build().Nodes, new List<INode> { val2 });
         }
     }

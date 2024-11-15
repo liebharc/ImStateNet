@@ -52,7 +52,7 @@
             var values = _values.SetItem(node, newValue);
 
             var changes = _changes;
-            if (old != null && oldValue && node.AreValuesEqual(old, newValue))
+            if (oldValue && node.AreValuesEqual(old, newValue))
                 changes = changes.Remove(node);
             else
                 changes = changes.Add(node);
@@ -80,20 +80,20 @@
 
             lock (LazyValueLock)
             {
-                var toBeCalculated = GetAllDependencies((IDerivedNode)node);
+                var toBeCalculated = GetAllDependenciesRecursive((IDerivedNode)node);
                 CalculateListOfLazyNodes(toBeCalculated);
                 return _values[node];
             }
         }
 
-        private IList<IDerivedNode> GetAllDependencies(IDerivedNode node)
+        private IList<IDerivedNode> GetAllDependenciesRecursive(IDerivedNode node)
         {
             var result = new List<IDerivedNode>();
             foreach (var dependency in node.Dependencies)
             {
                 if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy && (!_values.TryGetValue(node, out var value) || value == LazyValue))
                 {
-                    result.AddRange(GetAllDependencies(derivedNode));
+                    result.AddRange(GetAllDependenciesRecursive(derivedNode));
                 }
             }
 
@@ -147,17 +147,17 @@
                 }
 
 
-                IEnumerable<IntermediateCommitResult> nodesInThisLevel;
+                IEnumerable<IntermediateCommitResult> resultsInThisLevel;
                 if (parallel && !cancellation.IsCancellationRequested)
                 {
-                    nodesInThisLevel = level.AsParallel().Select(ProcessNode);
+                    resultsInThisLevel = level.AsParallel().Select(ProcessNode);
                 }
                 else
                 {
-                    nodesInThisLevel = level.Select(ProcessNode);
+                    resultsInThisLevel = level.Select(ProcessNode);
                 }
 
-                foreach (var result in nodesInThisLevel)
+                foreach (var result in resultsInThisLevel)
                 {
                     if (result.IsUnprocessed)
                     {
@@ -168,7 +168,6 @@
                         values = values.SetItem(result.Node, result.NewValue);
                         changes = changes.Add(result.Node);
                     }
-
                 }
             }
 
@@ -177,6 +176,17 @@
 
             IntermediateCommitResult ProcessNode(IDerivedNode node)
             {
+                if (cancellation.IsCancellationRequested)
+                {
+                    return new IntermediateCommitResult
+                    {
+                        Node = node,
+                        NewValue = null,
+                        HasChanged = false,
+                        IsUnprocessed = true
+                    };
+                }
+
                 if (node.IsLazy)
                 {
                     return new IntermediateCommitResult
@@ -198,17 +208,6 @@
                         NewValue = null,
                         HasChanged = false,
                         IsUnprocessed = false
-                    };
-                }
-
-                if (cancellation.IsCancellationRequested)
-                {
-                    return new IntermediateCommitResult
-                    {
-                        Node = node,
-                        NewValue = null,
-                        HasChanged = false,
-                        IsUnprocessed = true
                     };
                 }
 

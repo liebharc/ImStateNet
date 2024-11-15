@@ -15,6 +15,12 @@
 
         public ImmutableList<INode> Nodes { get; }
 
+        /// <summary>
+        /// Returns the nodes organized in levels. Levels are so, that
+        /// a node in a higher level can only depend on a node in a lower
+        /// level. Therefore all nodes in a level can be calculated in parallel
+        /// as soon as all nodes in the lower levels are done calculating.
+        /// </summary>
         public IReadOnlyList<IReadOnlyList<IDerivedNode>> Levels { get; }
 
         private IDictionary<INode, int> _nodeToLevel;

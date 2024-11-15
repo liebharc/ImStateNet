@@ -39,7 +39,7 @@
             return node;
         }
 
-        public void RemoveNodeAndAllDependencies(INode node)
+        public void RemoveNodeAndAllDependents(INode node)
         {
             _removedNodes.Add(node);
         }

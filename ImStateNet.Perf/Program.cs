@@ -75,7 +75,7 @@ public class Program
 
         startTime.Restart();
         builder = state.ChangeConfiguration();
-        builder.RemoveNodeAndAllDependencies(inputs.First().Key);
+        builder.RemoveNodeAndAllDependents(inputs.First().Key);
         builder.AddInput(new InputNode<int>(), 5);
         state = builder.Build();
         startTime.Stop();

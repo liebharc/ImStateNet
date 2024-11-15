@@ -16,7 +16,7 @@
 
         protected AbstractNode(string? name = null)
         {
-            _name = name ?? Guid.NewGuid().ToString();
+            _name = name ?? GetType().Name + " " + Guid.NewGuid().ToString();
         }
 
         /// <summary>
