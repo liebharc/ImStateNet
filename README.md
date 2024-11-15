@@ -31,6 +31,21 @@ Assert.AreEqual(4, state.GetValue(result));
 CollectionAssert.AreEquivalent(new INode[] { val1, result }, changes);
 ```
 
+The concept is flexible enough to interface with other patterns, e.g. here we model the calculation graph with event handlers:
+
+```csharp
+using var val1 = new InputPropertyWithState();
+using var val2 = new InputPropertyWithState();
+using var sum = new SumEventHandlerWithState(new IValueChangeTriggerWithState[] { val1, val2 });
+using var semaphore = new SemaphoreSlim(0, 2);
+sum.Changed += (_, _) => semaphore.Release();
+val1.Value = 2;
+await semaphore.WaitAsync(5000);
+val2.Value = 3;
+await semaphore.WaitAsync(5000);
+Assert.AreEqual(sum.Value, 5);
+```
+
 Use Case: This solution is particularly beneficial when dealing with settings that are interdependent and time-consuming to apply. This could be due to the need to transmit them to hardware, which then adjusts electrical or mechanical parameters. In such scenarios, the overhead associated with this solution is justified by the reduction in the number of changes required.
 
 Advantages:
