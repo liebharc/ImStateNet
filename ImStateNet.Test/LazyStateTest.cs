@@ -4,7 +4,6 @@
     using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-
     public class LazySumState
     {
         public InputNode<int> Val1 { get; private set; }

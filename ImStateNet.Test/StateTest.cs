@@ -127,13 +127,13 @@
             Assert.AreEqual(3, state.GetValue(result));
 
             state = state.ChangeValue(val1, 2);
-            Assert.IsFalse(state.IsConsistent());
+            Assert.IsFalse(state.IsConsistent);
 
             state = state.ChangeValue(val1, 1);
-            Assert.IsTrue(state.IsConsistent());
+            Assert.IsTrue(state.IsConsistent);
 
             (state, var changes) = state.ChangeValue(val1, 2).Commit();
-            Assert.IsTrue(state.IsConsistent());
+            Assert.IsTrue(state.IsConsistent);
             Assert.AreEqual(4, state.GetValue(result));
             CollectionAssert.AreEquivalent(new INode[] { val1, result }, changes);
         }

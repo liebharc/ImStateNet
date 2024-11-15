@@ -212,7 +212,8 @@
                     };
                 }
 
-                var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
+                var inputs = node.Dependencies.Select(dep => values[dep]).ToList();
+                var newValue = node.Calculate(inputs);
                 var oldValue = _initialValues.TryGetValue(node, out var old);
                 var haveValuesChanged = !oldValue || !node.AreValuesEqual(old, newValue);
                 return new IntermediateCommitResult
@@ -225,7 +226,7 @@
             }
         }
 
-        public bool IsConsistent() => _changes.IsEmpty;
+        public bool IsConsistent => _changes.IsEmpty;
 
         public override string ToString()
         {

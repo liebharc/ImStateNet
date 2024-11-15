@@ -1,7 +1,5 @@
 ﻿using ImStateNet.Core;
 using ImStateNet.Extensions;
-using Newtonsoft.Json.Linq;
-using System.Xml.Linq;
 
 namespace ImStateNet.Test
 {
@@ -96,11 +94,11 @@ namespace ImStateNet.Test
             }
         }
 
-        public DerivedNode<int> Register(IValueChangeTriggerWithState[] dependencies, Func<int> calculation)
+        public DerivedNode<int> Register(IValueChangeTriggerWithState[] dependencies, Func<IList<int>, int> calculation)
         {
             lock (_lock)
             {
-                var node = new LambdaCalcNode<int>((_) => calculation(), dependencies.Select(d => d.Node).ToList());
+                var node = new LambdaCalcNode<int>((v) => calculation(v), dependencies.Select(d => d.Node).ToList());
                 var builder = _state.ChangeConfiguration();
                 builder.AddCalculation(node);
                 _state = builder.Build();
@@ -159,6 +157,8 @@ namespace ImStateNet.Test
                 OnStateChanged?.Invoke(this, changes);
             });
         }
+
+        public bool IsConsistent => _state.IsConsistent;
 
         public EventHandler<ISet<INode>>? OnStateChanged;
 
@@ -234,14 +234,22 @@ namespace ImStateNet.Test
         public event EventHandler? Changed;
     }
 
-    public sealed class SumEventHandlerWithState : IValueChangeTriggerWithState
+    public class SumEventHandlerWithState : IValueChangeTriggerWithState
     {
         private readonly DerivedNode<int> _node;
+        private readonly IValueChangeTriggerWithState[] _triggers;
 
         public SumEventHandlerWithState(IValueChangeTriggerWithState[] triggers)
         {
-            _node = EventHandlerState.GlobalState.Register(triggers, () => triggers.Select(x => x.Value).Sum());
+            _triggers = triggers;
+            _node = EventHandlerState.GlobalState.Register(triggers, CalculateSum);
             EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
+        }
+
+        protected virtual int CalculateSum(IList<int> inputs)
+        {
+            var sum = inputs.Sum();
+            return sum;
         }
 
         private void OnStateChanged(object? sender, ISet<INode> e)
@@ -262,7 +270,7 @@ namespace ImStateNet.Test
             get => EventHandlerState.GlobalState.GetValue(_node);
         }
 
-        public INode Node => throw new NotImplementedException();
+        public INode Node => _node;
 
         public event EventHandler? Changed;
     }

@@ -33,7 +33,7 @@ namespace ImStateNet.Test
             if (!ReferenceEquals(state.Nodes, baseState.Nodes))
                 throw new InvalidOperationException("States must have the same nodes");
 
-            if (!baseState.IsConsistent())
+            if (!baseState.IsConsistent)
                 throw new InvalidOperationException("Base state must not have any uncommitted changes");
 
             foreach (var change in state.Changes)
