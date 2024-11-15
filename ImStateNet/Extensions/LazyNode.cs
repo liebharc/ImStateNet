@@ -19,5 +19,15 @@
         {
             return InnerNode.Calculate(inputs);
         }
+
+        public override void OnBuild()
+        {
+            InnerNode.OnBuild();
+        }
+
+        public override bool AreValuesEqual(U value1, U value2)
+        {
+            return InnerNode.AreValuesEqual(value1, value2);
+        }
     }
 }

@@ -43,5 +43,15 @@
             _frozen = true;
             _node.OnBuild();
         }
+
+        public override bool AreValuesEqual(U value1, U value2)
+        {
+            if (_node == null)
+            {
+                return base.AreValuesEqual(value1, value2);
+            }
+
+            return _node.AreValuesEqual(value1, value2);
+        }
     }
 }
