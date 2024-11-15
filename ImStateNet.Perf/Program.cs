@@ -71,5 +71,13 @@ public class Program
         Console.WriteLine($"Update time: {startTime.Elapsed.TotalSeconds} seconds for {numberOfCommits} commits");
         var firstSumNode = nodes.OfType<SumNode<long>>().First();
         Console.WriteLine("Result of first sum: " + state.GetValue(firstSumNode));
+
+        startTime.Restart();
+        builder = state.ChangeConfiguration();
+        builder.RemoveNodeAndAllDependencies(inputs.First().Key);
+        builder.AddInput(new InputNode<int>(), 5);
+        state = builder.Build();
+        startTime.Stop();
+        Console.WriteLine($"Reconfigure time: {startTime.Elapsed.TotalSeconds} seconds (" + state.Nodes.Count + " nodes remain after the update)");
     }
 }
