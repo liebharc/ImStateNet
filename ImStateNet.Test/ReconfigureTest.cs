@@ -1,4 +1,7 @@
-﻿namespace ImStateNet.Test
+﻿using ImStateNet.Core;
+using ImStateNet.Extensions;
+
+namespace ImStateNet.Test
 {
     [TestClass]
     public class ReconfigureTest

@@ -1,6 +1,8 @@
 ﻿namespace ImStateNet.Test
 {
     using System;
+    using ImStateNet.Core;
+    using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
     [TestClass]

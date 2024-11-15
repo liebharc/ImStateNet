@@ -2,6 +2,8 @@ namespace ImStateNet.Test
 {
     using System;
     using System.Collections.Generic;
+    using ImStateNet.Core;
+    using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
     public class StateMut

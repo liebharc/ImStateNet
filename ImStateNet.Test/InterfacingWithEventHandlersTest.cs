@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using ImStateNet.Core;
+using ImStateNet.Extensions;
+using Newtonsoft.Json.Linq;
 using System.Xml.Linq;
 
 namespace ImStateNet.Test

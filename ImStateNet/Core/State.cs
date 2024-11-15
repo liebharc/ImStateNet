@@ -1,133 +1,9 @@
-﻿namespace ImStateNet
+﻿namespace ImStateNet.Core
 {
     using System;
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
-
-    public interface INode
-    {
-        void OnBuild();
-        string Name { get; }
-        bool AreValuesEqual(object value1, object value2);
-    }
-
-    public abstract class AbstractNode<T> : INode
-    {
-        protected string _name;
-
-        protected AbstractNode(string? name = null)
-        {
-            _name = name ?? Guid.NewGuid().ToString();
-        }
-
-        /// <summary>
-        /// Called when the state is built, a node can be part of multiple states.
-        /// </summary>
-        public virtual void OnBuild()
-        {
-        }
-
-        public string Name => _name;
-
-        /// <summary>
-        /// Compares two values and returns true if they are equal.
-        /// Can be overridden by subclasses to provide a custom comparison method, e.g., by using a tolerance for floats.
-        /// </summary>
-        public virtual bool AreValuesEqual(T value1, T value2)
-        {
-            return EqualityComparer<T>.Default.Equals(value1, value2);
-        }
-
-        public override string ToString() => _name;
-
-        public sealed override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        public sealed override bool Equals(object? obj)
-        {
-            return base.Equals(obj);
-        }
-
-        bool INode.AreValuesEqual(object value1, object value2)
-        {
-            return AreValuesEqual((T)value1, (T)value2);
-        }
-    }
-
-    public interface IInputNode : INode
-    {
-        object Validate(object value);
-    }
-
-    public class InputNode<T> : AbstractNode<T>, IInputNode
-    {
-        public InputNode(string? name = null) : base(name) { }
-
-        /// <summary>
-        /// Validates the value before setting it. It can coerce the value to a valid one or throw an exception if the value is invalid.
-        /// </summary>
-        public virtual T Validate(T value)
-        {
-            return value;
-        }
-
-        object IInputNode.Validate(object value)
-        {
-            return Validate((T)value);
-        }
-    }
-
-    public interface IDerivedNode : INode
-    {
-        IReadOnlyList<INode> Dependencies { get; }
-
-        bool IsLazy { get; }
-
-        object Calculate(IReadOnlyList<object> inputs);
-    }
-
-    public abstract class DerivedNode<T> : AbstractNode<T>, IDerivedNode
-    {
-        private static bool AnyLazyDependencies(IReadOnlyList<INode> dependencies)
-        {
-            foreach (var dependency in dependencies)
-            {
-                if (dependency is IDerivedNode derivedNode && derivedNode.IsLazy)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        protected IReadOnlyList<INode> _dependencies;
-
-        protected DerivedNode(IReadOnlyList<INode> dependencies, string? name = null) : base(name)
-        {
-            _dependencies = dependencies;
-            IsLazy = AnyLazyDependencies(dependencies);
-        }
-
-        public IReadOnlyList<INode> Dependencies => _dependencies;
-
-        public bool IsLazy { get; init; }
-
-        /// <summary>
-        /// Calculates the value of the node based on the inputs.
-        /// The caller guarantees that the inputs are in the same order
-        /// as the dependencies.
-        /// </summary>
-        public abstract T Calculate(IReadOnlyList<object> inputs);
-
-        object IDerivedNode.Calculate(IReadOnlyList<object> inputs)
-        {
-            return Calculate(inputs);
-        }
-    }
 
     public class State
     {
@@ -213,7 +89,6 @@
             }
         }
 
-
         private IList<IDerivedNode> GetAllDependencies(IDerivedNode node)
         {
             var result = new List<IDerivedNode>();
@@ -271,7 +146,6 @@
                 return 0;
             }
         }
-
         public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null, bool parallel = true)
         {
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
@@ -301,7 +175,8 @@
                     nodesInThisLevel = level.Select(ProcessNode);
                 }
 
-                foreach (var result in nodesInThisLevel) {
+                foreach (var result in nodesInThisLevel)
+                {
                     if (result.IsUnprocessed)
                     {
                         unprocessedChanges = unprocessedChanges.Add(result.Node);
@@ -388,126 +263,6 @@
             return new StateBuilder(_nodes, _initialValues, _nodes.Where(n => !_changes.Contains(n)).ToHashSet());
         }
     }
-
-    public class StateBuilder
-    {
-        private readonly List<INode> _nodes;
-        private readonly Dictionary<INode, object> _initialValues;
-        private readonly HashSet<INode> _removedNodes = new();
-        private readonly ISet<INode> _nodesWithInitialValues;
-
-        public StateBuilder()
-        {
-            _nodes = new List<INode>();
-            _initialValues = new Dictionary<INode, object>();
-            _nodesWithInitialValues = new HashSet<INode>();
-        }
-
-        public StateBuilder(IEnumerable<INode> nodes, IDictionary<INode, object> initialValues, ISet<INode> nodesWithInitialValues)
-        {
-            _nodes = nodes.ToList();
-            _initialValues = new Dictionary<INode, object>(initialValues);
-            _nodesWithInitialValues = nodesWithInitialValues;
-        }
-
-        public TInputNode AddInput<T, TInputNode>(TInputNode node, T value) where TInputNode : InputNode<T>
-        {
-            _nodes.Add(node);
-            _initialValues[node] = value;
-            return node;
-        }
-
-        public TDerivedNode AddCalculation<TDerivedNode>(TDerivedNode node) where TDerivedNode : IDerivedNode
-        {
-            _nodes.Add(node);
-            return node;
-        }
-
-        public void RemoveNodeAndAllDependencies(INode node)
-        {
-            _removedNodes.Add(node);
-        }
-
-        private List<INode> SortedNodes()
-        {
-            var sortedNodes = new List<INode>();
-            var visited = new HashSet<INode>();
-            var visiting = new HashSet<INode>();
-
-            void Visit(INode node)
-            {
-                if (visiting.Contains(node))
-                    throw new InvalidOperationException("Circular dependency detected");
-
-                if (!visited.Contains(node))
-                {
-                    visiting.Add(node);
-                    if (node is IDerivedNode derivedNode)
-                    {
-                        foreach (var dependency in derivedNode.Dependencies)
-                            Visit(dependency);
-                    }
-
-                    visiting.Remove(node);
-                    visited.Add(node);
-                    sortedNodes.Add(node);
-                }
-            }
-
-            foreach (var node in _nodes)
-                Visit(node);
-
-            return sortedNodes;
-        }
-
-        private IList<INode> RemoveMarkedNodes(IList<INode> sortedNodes)
-        {
-            if (!_removedNodes.Any())
-            {
-                return sortedNodes;
-            }
-
-            var result = new List<INode>();
-            foreach (var node in sortedNodes)
-            {
-                bool shouldRemove = _removedNodes.Contains(node);
-                if (!shouldRemove && node is IDerivedNode derivedNode)
-                {
-                    shouldRemove = derivedNode.Dependencies.Any(d => _removedNodes.Contains(d));
-                }
-
-                if (shouldRemove)
-                {
-                    _removedNodes.Add(node);
-                    _initialValues.Remove(node);
-                }
-                else
-                {
-                    result.Add(node);
-                }
-            }
-
-            return result;
-        }
-
-        public State Build(bool skipCalculation = false)
-        {
-            var nodes = RemoveMarkedNodes(SortedNodes());
-            foreach (var node in nodes.OfType<IDerivedNode>())
-            {
-                node.OnBuild();
-            }
-
-            var state = new State(nodes.ToImmutableList(), _initialValues.ToImmutableDictionary(), changes: nodes.Where(n => !_nodesWithInitialValues.Contains(n)).ToImmutableHashSet());
-            if (skipCalculation)
-            {
-                return state;
-            }
-
-            return state.Commit().Item1;
-        }
-    }
-
     public readonly struct IntermediateCommitResult
     {
         public INode Node { get; init; }
@@ -515,5 +270,4 @@
         public bool IsUnprocessed { get; init; }
         public object? NewValue { get; init; }
     }
-
 }
