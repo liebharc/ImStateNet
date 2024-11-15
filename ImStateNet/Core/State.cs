@@ -187,19 +187,20 @@
                     };
                 }
 
+                var anyDepsChanged = changes.Contains(node) || !changes.Intersect(node.Dependencies).IsEmpty;
                 if (node.IsLazy)
                 {
                     return new IntermediateCommitResult
                     {
                         Node = node,
                         NewValue = LazyValue,
-                        // We can't tell if the node has changed as it's lazy
-                        HasChanged = false,
+                        // If the dependencies of a lazy node have changed, then the lazy node 
+                        // might produce a different value
+                        HasChanged = anyDepsChanged,
                         IsUnprocessed = false
                     };
                 }
 
-                var anyDepsChanged = changes.Contains(node) || !changes.Intersect(node.Dependencies).IsEmpty;
                 if (!anyDepsChanged)
                 {
                     return new IntermediateCommitResult
