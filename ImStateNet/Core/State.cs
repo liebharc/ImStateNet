@@ -246,6 +246,7 @@
             return new StateBuilder(nodes, _initialValues, nodes.Where(n => !_changes.Contains(n)).ToHashSet());
         }
     }
+
     public readonly struct IntermediateCommitResult
     {
         public INode Node { get; init; }
