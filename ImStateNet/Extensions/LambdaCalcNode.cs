@@ -20,5 +20,4 @@
             return _calculation(inputs.Cast<T>().ToList());
         }
     }
-
 }

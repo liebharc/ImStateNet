@@ -15,5 +15,4 @@
             return (U)Convert.ChangeType(inputs.Cast<U>().Sum(x => Convert.ToInt64(x)), typeof(U));
         }
     }
-
 }

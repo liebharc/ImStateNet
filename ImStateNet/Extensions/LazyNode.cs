@@ -20,5 +20,4 @@
             return InnerNode.Calculate(inputs);
         }
     }
-
 }

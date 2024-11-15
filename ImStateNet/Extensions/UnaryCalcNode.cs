@@ -15,5 +15,4 @@
 
         protected abstract TOUT Calculation(TI1? value);
     }
-
 }
