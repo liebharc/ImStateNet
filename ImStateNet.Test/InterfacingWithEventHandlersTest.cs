@@ -18,8 +18,8 @@ namespace ImStateNet.Test
             using var semaphore = new SemaphoreSlim(0, 2);
             sum.Changed += (_, _) => semaphore.Release();
             val1.Value = 2;
-            val2.Value = 3;
             await semaphore.WaitAsync(5000);
+            val2.Value = 3;
             await semaphore.WaitAsync(5000);
             Assert.AreEqual(sum.Value, 5);
         }

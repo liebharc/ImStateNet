@@ -69,6 +69,10 @@ namespace ImStateNet.Test
 
     public class EventHandlerState
     {
+        /// <summary>
+        /// The state doesn't need to be global. We do this in this example
+        /// to show that the interface can be the same (e.g. <see cref="InputProperty"/> and <see cref="InputPropertyWithState"/>).
+        /// </summary>
         public static EventHandlerState GlobalState { get; } = new EventHandlerState();
 
         private readonly object _lock = new object();
