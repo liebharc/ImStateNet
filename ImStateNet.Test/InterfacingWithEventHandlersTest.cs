@@ -237,17 +237,18 @@ namespace ImStateNet.Test
     public class SumEventHandlerWithState : IValueChangeTriggerWithState
     {
         private readonly DerivedNode<int> _node;
-        private readonly IValueChangeTriggerWithState[] _triggers;
 
         public SumEventHandlerWithState(IValueChangeTriggerWithState[] triggers)
         {
-            _triggers = triggers;
             _node = EventHandlerState.GlobalState.Register(triggers, CalculateSum);
             EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
         }
 
         protected virtual int CalculateSum(IList<int> inputs)
         {
+            // We can't use triggers here as they only provide the last
+            // committed changes, but here we need to provide a result for an ongoing
+            // calculation
             var sum = inputs.Sum();
             return sum;
         }
