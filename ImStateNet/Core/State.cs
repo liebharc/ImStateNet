@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
+    using System.Threading.Channels;
 
     public class State
     {
@@ -103,10 +104,29 @@
 
         private void CalculateListOfLazyNodes(IList<IDerivedNode> nodes)
         {
-            foreach (var node in nodes)
+            var groupedByLevel = nodes.GroupBy(n => _metaInfo.GetLevel(n)).OrderBy(g => g.Key);
+            var values = _values;
+            foreach (var level in groupedByLevel)
             {
-                var newValue = node.Calculate(node.Dependencies.Select(dep => _values[dep]).ToList());
-                _values = _values.SetItem(node, newValue);
+                var results = level.AsParallel().Select(ProcessNode);
+                foreach (var result in results)
+                {
+                    values = values.SetItem(result.Node, result.NewValue);
+                }
+            }
+
+            _values = values;
+
+            IntermediateCommitResult ProcessNode(IDerivedNode node)
+            {
+                var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
+                return new IntermediateCommitResult
+                {
+                    Node = node,
+                    NewValue = newValue,
+                    HasChanged = true,
+                    IsUnprocessed = false
+                };
             }
         }
 

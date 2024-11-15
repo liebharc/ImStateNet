@@ -10,11 +10,19 @@
         {
             Nodes = nodes;
             Levels = GetLevels(nodes);
+            _nodeToLevel = ReverseLevels(Levels);
         }
 
         public ImmutableList<INode> Nodes { get; }
 
         public IReadOnlyList<IReadOnlyList<IDerivedNode>> Levels { get; }
+
+        private IDictionary<INode, int> _nodeToLevel;
+
+        public int GetLevel(INode node)
+        {
+            return _nodeToLevel[node];
+        }
 
         private static IReadOnlyList<IReadOnlyList<IDerivedNode>> GetLevels(IEnumerable<INode> nodes)
         {
@@ -48,6 +56,23 @@
 
                 return 0;
             }
+        }
+
+        private static IDictionary<INode, int> ReverseLevels(IReadOnlyList<IReadOnlyList<IDerivedNode>> levels)
+        {
+            var result = new Dictionary<INode, int>();
+            int levelNumber = 0;
+            foreach (var level in levels)
+            {
+                foreach (var node in level)
+                {
+                    result.Add(node, levelNumber);
+                }
+
+                levelNumber++;
+            }
+
+            return result;
         }
     }
 }
