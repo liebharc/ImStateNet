@@ -16,14 +16,14 @@ namespace ImStateNet.Test
     {
         private int _value;
 
-        public int Value 
-        { 
-            get => _value; 
-            set 
-            { 
+        public int Value
+        {
+            get => _value;
+            set
+            {
                 _value = value;
                 Changed?.Invoke(this, EventArgs.Empty);
-            } 
+            }
         }
 
         public event EventHandler Changed;
@@ -171,7 +171,7 @@ namespace ImStateNet.Test
         {
             private readonly EventHandlerState _state;
 
-            public DisableAutoCommitScope(EventHandlerState state) 
+            public DisableAutoCommitScope(EventHandlerState state)
             {
                 lock (state._lock)
                 {
