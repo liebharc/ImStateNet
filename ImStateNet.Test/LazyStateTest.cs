@@ -27,7 +27,7 @@
             State = builder.Build();
         }
 
-        public T GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
+        public T? GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 

@@ -61,7 +61,7 @@ namespace ImStateNet.Test
             _state = builder.Build();
         }
 
-        private T GetValue<T>(AbstractNode<T> node) => _state.GetValue(node);
+        private T? GetValue<T>(AbstractNode<T> node) => _state.GetValue(node);
 
         private void SetValue<T>(InputNode<T> node, T value)
         {

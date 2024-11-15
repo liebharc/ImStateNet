@@ -9,7 +9,7 @@
     {
         void OnBuild();
         string Name { get; }
-        bool AreValuesEqual(object value1, object value2);
+        bool AreValuesEqual(object? value1, object? value2);
     }
 
     public abstract class AbstractNode<T> : INode
@@ -34,7 +34,7 @@
         /// Compares two values and returns true if they are equal.
         /// Can be overridden by subclasses to provide a custom comparison method, e.g., by using a tolerance for floats.
         /// </summary>
-        public virtual bool AreValuesEqual(T value1, T value2)
+        public virtual bool AreValuesEqual(T? value1, T? value2)
         {
             return EqualityComparer<T>.Default.Equals(value1, value2);
         }
@@ -51,15 +51,15 @@
             return base.Equals(obj);
         }
 
-        bool INode.AreValuesEqual(object value1, object value2)
+        bool INode.AreValuesEqual(object? value1, object ?value2)
         {
-            return AreValuesEqual((T)value1, (T)value2);
+            return AreValuesEqual((T?)value1, (T?)value2);
         }
     }
 
     public interface IInputNode : INode
     {
-        object Validate(object value);
+        object? Validate(object? value);
     }
 
     public class InputNode<T> : AbstractNode<T>, IInputNode
@@ -69,14 +69,14 @@
         /// <summary>
         /// Validates the value before setting it. It can coerce the value to a valid one or throw an exception if the value is invalid.
         /// </summary>
-        public virtual T Validate(T value)
+        public virtual T? Validate(T? value)
         {
             return value;
         }
 
-        object IInputNode.Validate(object value)
+        object? IInputNode.Validate(object? value)
         {
-            return Validate((T)value);
+            return Validate((T?)value);
         }
     }
 
@@ -86,7 +86,7 @@
 
         bool IsLazy { get; }
 
-        object Calculate(IReadOnlyList<object> inputs);
+        object? Calculate(IReadOnlyList<object?> inputs);
     }
 
     public abstract class DerivedNode<T> : AbstractNode<T>, IDerivedNode
@@ -121,9 +121,9 @@
         /// The caller guarantees that the inputs are in the same order
         /// as the dependencies.
         /// </summary>
-        public abstract T Calculate(IReadOnlyList<object> inputs);
+        public abstract T? Calculate(IReadOnlyList<object?> inputs);
 
-        object IDerivedNode.Calculate(IReadOnlyList<object> inputs)
+        object? IDerivedNode.Calculate(IReadOnlyList<object?> inputs)
         {
             return Calculate(inputs);
         }

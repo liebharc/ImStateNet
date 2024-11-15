@@ -26,7 +26,7 @@ namespace ImStateNet.Test
             }
         }
 
-        public event EventHandler Changed;
+        public event EventHandler? Changed;
     }
 
     public class SumEventHandler : IValueChangeTrigger, IDisposable
@@ -66,7 +66,7 @@ namespace ImStateNet.Test
             }
         }
 
-        public event EventHandler Changed;
+        public event EventHandler? Changed;
     }
 
     public class EventHandlerState
@@ -118,7 +118,7 @@ namespace ImStateNet.Test
             }
         }
 
-        public T GetValue<T>(AbstractNode<T> node)
+        public T? GetValue<T>(AbstractNode<T> node)
         {
             return _state.GetValue(node);
         }
@@ -160,7 +160,7 @@ namespace ImStateNet.Test
             });
         }
 
-        public EventHandler<ISet<INode>> OnStateChanged;
+        public EventHandler<ISet<INode>>? OnStateChanged;
 
         public IAsyncDisposable DisableAutoCommit()
         {
@@ -231,7 +231,7 @@ namespace ImStateNet.Test
 
         public INode Node => _node;
 
-        public event EventHandler Changed;
+        public event EventHandler? Changed;
     }
 
     public sealed class SumEventHandlerWithState : IValueChangeTriggerWithState
@@ -264,7 +264,7 @@ namespace ImStateNet.Test
 
         public INode Node => throw new NotImplementedException();
 
-        public event EventHandler Changed;
+        public event EventHandler? Changed;
     }
 
 

@@ -8,21 +8,21 @@
     public class StateBuilder
     {
         private readonly List<INode> _nodes;
-        private readonly Dictionary<INode, object> _initialValues;
+        private readonly Dictionary<INode, object?> _initialValues;
         private readonly HashSet<INode> _removedNodes = new();
         private readonly ISet<INode> _nodesWithInitialValues;
 
         public StateBuilder()
         {
             _nodes = new List<INode>();
-            _initialValues = new Dictionary<INode, object>();
+            _initialValues = new Dictionary<INode, object?>();
             _nodesWithInitialValues = new HashSet<INode>();
         }
 
-        public StateBuilder(IEnumerable<INode> nodes, IDictionary<INode, object> initialValues, ISet<INode> nodesWithInitialValues)
+        public StateBuilder(IEnumerable<INode> nodes, IDictionary<INode, object?> initialValues, ISet<INode> nodesWithInitialValues)
         {
             _nodes = nodes.ToList();
-            _initialValues = new Dictionary<INode, object>(initialValues);
+            _initialValues = new Dictionary<INode, object?>(initialValues);
             _nodesWithInitialValues = nodesWithInitialValues;
         }
 

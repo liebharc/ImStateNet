@@ -4,23 +4,22 @@
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
-    using System.Threading.Channels;
 
     public class State
     {
         private static readonly object LazyValue = new object();
         private readonly object LazyValueLock = new object();
         private readonly CalculationNodesNetwork _metaInfo;
-        private ImmutableDictionary<INode, object> _values;
+        private ImmutableDictionary<INode, object?> _values;
         private readonly ImmutableHashSet<INode> _changes;
-        private readonly ImmutableDictionary<INode, object> _initialValues;
+        private readonly ImmutableDictionary<INode, object?> _initialValues;
         private readonly Guid _versionId;
 
         public State(
             CalculationNodesNetwork metaInfo,
-            ImmutableDictionary<INode, object> values,
+            ImmutableDictionary<INode, object?> values,
             ImmutableHashSet<INode>? changes = null,
-            ImmutableDictionary<INode, object>? initialValues = null,
+            ImmutableDictionary<INode, object?>? initialValues = null,
             Guid? versionId = null)
         {
             _changes = changes ?? ImmutableHashSet<INode>.Empty;
@@ -46,7 +45,7 @@
         /// <param name="node">A node</param>
         /// <param name="newValue">The new value for the node</param>
         /// <returns>A new state, call <see cref="Commit(CancellationToken?, bool)"/> to perform the calculation of all dependencies. </returns>
-        public State ChangeObjectValue(IInputNode node, object newValue)
+        public State ChangeObjectValue(IInputNode node, object? newValue)
         {
             newValue = node.Validate(newValue);
             var oldValue = _initialValues.TryGetValue(node, out var old);
@@ -61,9 +60,9 @@
             return new State(_metaInfo, values, changes, _initialValues, _versionId);
         }
 
-        public T GetValue<T>(AbstractNode<T> node)
+        public T? GetValue<T>(AbstractNode<T> node)
         {
-            return (T)GetObjValue(node);
+            return (T?)GetObjValue(node);
         }
 
         /// <summary>
@@ -71,7 +70,7 @@
         /// </summary>
         /// <param name="node">A node</param>
         /// <returns>The current value of the node</returns>
-        public object GetObjValue(INode node)
+        public object? GetObjValue(INode node)
         {
             bool hasValue = _values.TryGetValue(node, out var value);
             if (hasValue && value != LazyValue)
@@ -137,7 +136,6 @@
             var values = _values;
             var changes = _changes;
             var unprocessedChanges = ImmutableHashSet<INode>.Empty;
-            var lockObj = new object();
 
             var cancellation = cancellationToken ?? CancellationToken.None;
 
@@ -236,7 +234,7 @@
             return $"State({nodesAndValues}{changes})";
         }
 
-        public IDictionary<string, object> Dump()
+        public IDictionary<string, object?> Dump()
         {
             return Nodes.ToDictionary(node => node.Name, node => _values.GetValueOrDefault(node));
         }

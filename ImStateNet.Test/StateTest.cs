@@ -7,11 +7,11 @@
 
     public class MyBinaryNode : BinaryCalcNode<string, double, int>
     {
-        public MyBinaryNode(AbstractNode<double> dependency1, AbstractNode<int> dependency2, string name = null) : base(dependency1, dependency2, name)
+        public MyBinaryNode(AbstractNode<double> dependency1, AbstractNode<int> dependency2, string? name = null) : base(dependency1, dependency2, name)
         {
         }
 
-        protected override string _calculation(double value1, int value2)
+        protected override string Calculation(double value1, int value2)
         {
             return (value1 + value2).ToString();
         }
@@ -41,7 +41,7 @@
             State = builder.Build();
         }
 
-        public T GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
+        public T? GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 

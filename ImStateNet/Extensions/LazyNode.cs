@@ -15,7 +15,7 @@
 
         public DerivedNode<U> InnerNode { get; }
 
-        public override U Calculate(IReadOnlyList<object> inputs)
+        public override U Calculate(IReadOnlyList<object?> inputs)
         {
             return InnerNode.Calculate(inputs);
         }

@@ -5,15 +5,15 @@
 
     public abstract class UnaryCalcNode<TOUT, TI1> : DerivedNode<TOUT>
     {
-        protected UnaryCalcNode(AbstractNode<TI1> dependency, string name = null)
+        protected UnaryCalcNode(AbstractNode<TI1> dependency, string? name = null)
             : base(new List<INode> { dependency }, name) { }
 
-        public override TOUT Calculate(IReadOnlyList<object> inputs)
+        public override TOUT Calculate(IReadOnlyList<object?> inputs)
         {
-            return _calculation((TI1)inputs[0]);
+            return Calculation((TI1?)inputs[0]);
         }
 
-        protected abstract TOUT _calculation(TI1 value);
+        protected abstract TOUT Calculation(TI1? value);
     }
 
 }

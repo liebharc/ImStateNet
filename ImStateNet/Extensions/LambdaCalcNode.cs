@@ -9,13 +9,13 @@
     {
         private readonly Func<List<T>, T> _calculation;
 
-        public LambdaCalcNode(Func<List<T>, T> calculation, IReadOnlyList<INode> dependencies, string name = null)
+        public LambdaCalcNode(Func<List<T>, T> calculation, IReadOnlyList<INode> dependencies, string? name = null)
             : base(dependencies, name)
         {
             _calculation = calculation;
         }
 
-        public override T Calculate(IReadOnlyList<object> inputs)
+        public override T? Calculate(IReadOnlyList<object?> inputs)
         {
             return _calculation(inputs.Cast<T>().ToList());
         }
