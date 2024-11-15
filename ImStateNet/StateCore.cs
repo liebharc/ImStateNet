@@ -221,7 +221,7 @@
             }
         }
 
-        public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null)
+        public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null, bool parallel = true)
         {
             if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
 
@@ -231,8 +231,6 @@
             var lockObj = new object();
 
             var cancellation = cancellationToken ?? CancellationToken.None;
-
-            bool parallel = _nodes.Count > 100;
 
             foreach (var level in _levels)
             {
