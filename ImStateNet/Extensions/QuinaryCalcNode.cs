@@ -15,4 +15,27 @@
 
         protected abstract TOUT Calculation(TI1? value1, TI2? value2, TI3? value3, TI4? value4, TI5? value5);
     }
+
+    public class LambdaQuinaryCalcNode<TOUT, TI1, TI2, TI3, TI4, TI5> : QuinaryCalcNode<TOUT, TI1, TI2, TI3, TI4, TI5>
+    {
+        private readonly Func<TI1?, TI2?, TI3?, TI4?, TI5?, TOUT> _calculation;
+
+        public LambdaQuinaryCalcNode(
+            AbstractNode<TI1> dependency1,
+            AbstractNode<TI2> dependency2,
+            AbstractNode<TI3> dependency3,
+            AbstractNode<TI4> dependency4,
+            AbstractNode<TI5> dependency5,
+            Func<TI1?, TI2?, TI3?, TI4?, TI5?, TOUT> calculation,
+            string? name = null)
+            : base(dependency1, dependency2, dependency3, dependency4, dependency5, name)
+        {
+            _calculation = calculation;
+        }
+
+        protected override TOUT Calculation(TI1? value1, TI2? value2, TI3? value3, TI4? value4, TI5? value5)
+        {
+            return _calculation(value1, value2, value3, value4, value5);
+        }
+    }
 }

@@ -15,4 +15,25 @@
 
         protected abstract TOUT Calculation(TI1? value1, TI2? value2, TI3? value3);
     }
+
+    public class LambdaTernaryCalcNode<TOUT, TI1, TI2, TI3> : TernaryCalcNode<TOUT, TI1, TI2, TI3>
+    {
+        private readonly Func<TI1?, TI2?, TI3?, TOUT> _calculation;
+
+        public LambdaTernaryCalcNode(
+            AbstractNode<TI1> dependency1, 
+            AbstractNode<TI2> dependency2,
+            AbstractNode<TI3> dependency3,
+            Func<TI1?, TI2?, TI3?, TOUT> calculation, 
+            string? name = null)
+            : base(dependency1, dependency2, dependency3, name)
+        {
+            _calculation = calculation;
+        }
+
+        protected override TOUT Calculation(TI1? value1, TI2? value2, TI3? value3)
+        {
+            return _calculation(value1, value2, value3);
+        }
+    }
 }

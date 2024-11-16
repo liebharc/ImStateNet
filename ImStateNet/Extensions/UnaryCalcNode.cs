@@ -15,4 +15,23 @@
 
         protected abstract TOUT Calculation(TI1? value);
     }
+
+    public class LambdaUnaryCalcNode<TOUT, TI> : UnaryCalcNode<TOUT, TI>
+    {
+        private readonly Func<TI?, TOUT> _calculation;
+
+        public LambdaUnaryCalcNode(
+            AbstractNode<TI> dependency,
+            Func<TI?, TOUT> calculation,
+            string? name = null)
+            : base(dependency, name)
+        {
+            _calculation = calculation;
+        }
+
+        protected override TOUT Calculation(TI? value)
+        {
+            return _calculation(value);
+        }
+    }
 }

@@ -78,7 +78,7 @@ namespace ImStateNet.Test
         public DelayedSumNode(StateMut state, IValueChangeTriggerWithState[] triggers) : base(state, triggers)
         {
         }
-        protected override int CalculateSum(IList<int> inputs)
+        protected override int CalculateSum(IReadOnlyList<int> inputs)
         {
             var sleep = _random.Next(10);
             if (sleep > 0)
