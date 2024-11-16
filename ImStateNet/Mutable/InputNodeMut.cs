@@ -59,7 +59,7 @@ namespace ImStateNet.Mutable
 
         public Task SetValueAsync(T value)
         {
-            return _state.SetValueAsync(_node, Value);
+            return _state.SetValueAsync(_node, value);
         }
 
         public Task SetObjectValueAsync(object value)

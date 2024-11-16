@@ -58,5 +58,20 @@ namespace ImStateNet.Test
             await semaphore.WaitAsync(5000);
             Assert.AreEqual(sum.Value, 5);
         }
+
+        [TestMethod]
+        public async Task WithFloatingValue()
+        {
+            var state = new StateMut();
+            using var val1 = new InputPropertyWithState(state);
+            using var val2 = new InputPropertyWithState(state);
+            using var intermediateSum = new SumEventHandlerWithState(state, new IValueChangeTriggerWithState[] { val1, val2 });
+            using var val3 = new FloatInputPropertyWithState(state);
+            using var sum = new AddFloatWithIntNode(state, val3.Node, intermediateSum.Node);
+            await val3.SetValueAsync((float)5.5);
+            await val2.SetValueAsync(2);
+            await val1.SetValueAsync(1);
+            Assert.AreEqual(sum.Value, 8);
+        }
     }
 }

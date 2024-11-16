@@ -110,4 +110,36 @@ namespace ImStateNet.Test
 
         INode IValueChangeTriggerWithState.Node => Node;
     }
+
+    public sealed class FloatInputPropertyWithState : InputNodeMut<float>
+    {
+        public FloatInputPropertyWithState(StateMut state) : base(state, new InputNode<float>())
+        {
+        }
+    }
+
+    /// <summary>
+    /// Example of a node which takes parameters of different types.
+    /// </summary>
+    public class AddFloatWithIntNode: DerivedNodeMut<int>, IValueChangeTriggerWithState
+    {
+        public AddFloatWithIntNode(StateMut state, AbstractNode<float> floatNode, AbstractNode<int> intNode)
+        {
+            Init(state, new InnerSumNode(floatNode, intNode));
+        }
+
+        INode IValueChangeTriggerWithState.Node => Node;
+
+        private class InnerSumNode : BinaryCalcNode<int, float, int>
+        {
+            public InnerSumNode(AbstractNode<float> dependency1, AbstractNode<int> dependency2, string? name = null) : base(dependency1, dependency2, name)
+            {
+            }
+
+            protected override int Calculation(float value1, int value2)
+            {
+                return (int)(value1 + value2);
+            }
+        }
+    }
 }
