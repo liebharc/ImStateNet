@@ -80,7 +80,7 @@ namespace ImStateNet.Test
 
     public interface IValueChangeTriggerWithState : IValueChangeTrigger, IDisposable
     {
-        INode Node { get; }
+        AbstractNode<int> Node { get; }
     }
 
     public sealed class InputPropertyWithState : InputNodeMut<int>, IValueChangeTriggerWithState
@@ -89,7 +89,7 @@ namespace ImStateNet.Test
         {
         }
 
-        INode IValueChangeTriggerWithState.Node => Node;
+        AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
     }
 
     public class SumEventHandlerWithState : DerivedNodeMut<int>, IValueChangeTriggerWithState
@@ -108,7 +108,7 @@ namespace ImStateNet.Test
             return sum;
         }
 
-        INode IValueChangeTriggerWithState.Node => Node;
+        AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
     }
 
     public sealed class FloatInputPropertyWithState : InputNodeMut<float>
@@ -128,6 +128,6 @@ namespace ImStateNet.Test
             Init(state, LambdaCalcNode.Create(floatNode, intNode, (a, b) => (int)(a + b)));
         }
 
-        INode IValueChangeTriggerWithState.Node => Node;
+        AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
     }
 }

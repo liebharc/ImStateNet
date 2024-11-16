@@ -64,7 +64,7 @@
     {
         private readonly Func<IReadOnlyList<T>, T> _calculation;
 
-        public LambdaCalcNode(Func<IReadOnlyList<T>, T> calculation, IReadOnlyList<INode> dependencies, string? name = null)
+        public LambdaCalcNode(Func<IReadOnlyList<T>, T> calculation, IReadOnlyList<AbstractNode<T>> dependencies, string? name = null)
             : base(dependencies, name)
         {
             _calculation = calculation;
