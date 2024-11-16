@@ -1,4 +1,4 @@
-﻿namespace ImStateNet.Extensions
+﻿namespace ImStateNet.Examples
 {
     using ImStateNet.Core;
     using System;

@@ -1,4 +1,5 @@
 ﻿using ImStateNet.Core;
+using ImStateNet.Examples;
 using ImStateNet.Extensions;
 
 namespace ImStateNet.Test
