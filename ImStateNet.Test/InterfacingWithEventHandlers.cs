@@ -1,5 +1,6 @@
 ﻿using ImStateNet.Core;
 using ImStateNet.Extensions;
+using ImStateNet.Mutable;
 
 namespace ImStateNet.Test
 {
@@ -73,127 +74,7 @@ namespace ImStateNet.Test
         /// The state doesn't need to be global. We do this in this example
         /// to show that the interface can be the same (e.g. <see cref="InputProperty"/> and <see cref="InputPropertyWithState"/>).
         /// </summary>
-        public static EventHandlerState GlobalState { get; } = new EventHandlerState();
-
-        private readonly object _lock = new object();
-        private State _state;
-        private CancellationTokenSource _cancelPreviousCommit = new CancellationTokenSource();
-
-        private int _numberOfAutoCommitSuspenders = 0;
-
-        private EventHandlerState()
-        {
-            _state = new StateBuilder().Build();
-        }
-
-        public InputNode<int> Register(InputPropertyWithState input)
-        {
-            lock (_lock)
-            {
-                var node = new InputNode<int>();
-                var builder = _state.ChangeConfiguration();
-                builder.AddInput(node, 0);
-                _state = builder.Build();
-                return node;
-            }
-        }
-
-        public DerivedNode<int> Register(IValueChangeTriggerWithState[] dependencies, Func<IList<int>, int> calculation)
-        {
-            lock (_lock)
-            {
-                var node = new LambdaCalcNode<int>((v) => calculation(v), dependencies.Select(d => d.Node).ToList());
-                var builder = _state.ChangeConfiguration();
-                builder.AddCalculation(node);
-                _state = builder.Build();
-                return node;
-            }
-        }
-
-        public void RemoveNodeAndItsDependencies(INode node)
-        {
-            lock (_lock)
-            {
-                var builder = _state.ChangeConfiguration();
-                builder.RemoveNodeAndAllDependents(node);
-                _state = builder.Build();
-            }
-        }
-
-        public T? GetValue<T>(AbstractNode<T> node)
-        {
-            return _state.GetValue(node);
-        }
-
-        public Task SetValueAsync<T>(InputNode<T> node, T value)
-        {
-            lock (_lock)
-            {
-                _state = _state.ChangeValue(node, value);
-                if (_numberOfAutoCommitSuspenders > 0)
-                {
-                    return Task.CompletedTask;
-                }
-
-                return CommitAsync();
-            }
-        }
-
-        private Task CommitAsync()
-        {
-            _cancelPreviousCommit.Cancel();
-            var tokenSource = new CancellationTokenSource();
-            _cancelPreviousCommit = tokenSource;
-            var token = tokenSource.Token;
-            return Task.Run(() =>
-            {
-                (var stateUpdate, var changes) = _state.Commit(token);
-                lock (_lock)
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    _state = stateUpdate;
-                }
-
-                OnStateChanged?.Invoke(this, changes);
-            });
-        }
-
-        public bool IsConsistent => _state.IsConsistent;
-
-        public EventHandler<ISet<INode>>? OnStateChanged;
-
-        public IAsyncDisposable DisableAutoCommit()
-        {
-            return new DisableAutoCommitScope(this);
-        }
-
-        private sealed class DisableAutoCommitScope : IAsyncDisposable
-        {
-            private readonly EventHandlerState _state;
-
-            public DisableAutoCommitScope(EventHandlerState state)
-            {
-                lock (state._lock)
-                {
-                    state._numberOfAutoCommitSuspenders++;
-                }
-                _state = state;
-            }
-
-            public ValueTask DisposeAsync()
-            {
-
-                lock (_state._lock)
-                {
-                    _state._numberOfAutoCommitSuspenders--;
-                    return new ValueTask(_state.CommitAsync());
-                }
-            }
-        }
+        public static StateMut GlobalState { get; } = new StateMut();
     }
 
     public interface IValueChangeTriggerWithState : IValueChangeTrigger, IDisposable
@@ -207,7 +88,8 @@ namespace ImStateNet.Test
 
         public InputPropertyWithState()
         {
-            _node = EventHandlerState.GlobalState.Register(this);
+            _node = new InputNode<int>();
+            EventHandlerState.GlobalState.Register(_node);
             EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
         }
 
@@ -244,7 +126,8 @@ namespace ImStateNet.Test
 
         public SumEventHandlerWithState(IValueChangeTriggerWithState[] triggers)
         {
-            _node = EventHandlerState.GlobalState.Register(triggers, CalculateSum);
+            _node = new LambdaCalcNode<int>(CalculateSum, triggers.Select(t => t.Node).ToList());
+            EventHandlerState.GlobalState.Register(_node);
             EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
         }
 

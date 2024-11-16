@@ -7,7 +7,7 @@ namespace ImStateNet.Test
     using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-    public class StateMut
+    public class ExampleStateMut
     {
         public static State MergeChanges(State state1, State state2)
         {
@@ -53,7 +53,7 @@ namespace ImStateNet.Test
         private readonly InputNode<int> _val2;
         private readonly DerivedNode<int> _result;
 
-        public StateMut()
+        public ExampleStateMut()
         {
             var builder = new StateBuilder();
             _val1 = builder.AddInput(new InputNode<int>("val1"), 1);
@@ -91,7 +91,7 @@ namespace ImStateNet.Test
         [TestMethod]
         public void TestStateMut()
         {
-            var state = new StateMut();
+            var state = new ExampleStateMut();
             Assert.AreEqual(3, state.Result);
             Assert.AreEqual(1, state.Val1);
             Assert.AreEqual(2, state.Val2);
@@ -117,7 +117,7 @@ namespace ImStateNet.Test
 
             var state3 = state1.ChangeValue(val2, 6);
 
-            var merged = StateMut.MergeChanges(state2, state3);
+            var merged = ExampleStateMut.MergeChanges(state2, state3);
 
             Assert.AreEqual(5, merged.GetValue(val1));
             Assert.AreEqual(6, merged.GetValue(val2));
@@ -127,9 +127,9 @@ namespace ImStateNet.Test
 
             var conflict = state1.ChangeValue(val2, 7);
 
-            Assert.ThrowsException<InvalidOperationException>(() => StateMut.MergeChanges(state1, merged));
+            Assert.ThrowsException<InvalidOperationException>(() => ExampleStateMut.MergeChanges(state1, merged));
 
-            Assert.ThrowsException<InvalidOperationException>(() => StateMut.MergeChanges(conflict, state3));
+            Assert.ThrowsException<InvalidOperationException>(() => ExampleStateMut.MergeChanges(conflict, state3));
         }
 
         [TestMethod]
@@ -148,7 +148,7 @@ namespace ImStateNet.Test
 
             var (state4, _) = state2.ChangeValue(val3, 3).Commit();
 
-            var rebased = StateMut.RebaseChanges(state3, state4);
+            var rebased = ExampleStateMut.RebaseChanges(state3, state4);
 
             Assert.AreEqual(5, rebased.GetValue(val1));
             Assert.AreEqual(6, rebased.GetValue(val2));
@@ -157,9 +157,9 @@ namespace ImStateNet.Test
             var differentStateBuilder = new StateBuilder();
             differentStateBuilder.AddInput(new InputNode<int>(), 1);
 
-            Assert.ThrowsException<InvalidOperationException>(() => StateMut.RebaseChanges(state4, state3));
+            Assert.ThrowsException<InvalidOperationException>(() => ExampleStateMut.RebaseChanges(state4, state3));
 
-            Assert.ThrowsException<InvalidOperationException>(() => StateMut.RebaseChanges(differentStateBuilder.Build(), state4));
+            Assert.ThrowsException<InvalidOperationException>(() => ExampleStateMut.RebaseChanges(differentStateBuilder.Build(), state4));
         }
     }
 
