@@ -96,7 +96,7 @@ namespace ImStateNet.Test
     {
         public SumEventHandlerWithState(StateMut state, IValueChangeTriggerWithState[] triggers)
         {
-            Init(state, new LambdaCalcNode<int>(CalculateSum, triggers.Select(t => t.Node).ToList()));
+            Init(state, LambdaCalcNode.Create(triggers.Select(t => t.Node).ToList(), CalculateSum));
         }
 
         protected virtual int CalculateSum(IReadOnlyList<int> inputs)

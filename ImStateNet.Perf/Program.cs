@@ -28,7 +28,7 @@ public class Program
             {
                 var randomInput = nodes[random.Next(nodes.Count)];
                 var randomOffset = random.Next(1, 11);
-                var incrementNode = new LambdaCalcNode<long>(x => x[0] + randomOffset, new[] { randomInput }, $"lambda-{i}");
+                var incrementNode = LambdaCalcNode.Create(new[] { randomInput }, x => x[0] + randomOffset, $"lambda-{i}");
                 nodes.Add(builder.AddCalculation(incrementNode));
             }
             else if (i % 5 == 3)

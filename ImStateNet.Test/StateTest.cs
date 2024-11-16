@@ -35,7 +35,7 @@
             Val1 = builder.AddInput(new InputNode<int>(), 1);
             Val2 = builder.AddInput(new NumericMinMaxNode<int>(1, 5), 2);
             Val3 = builder.AddInput(new InputNode<double>(), 3.0);
-            Calc = builder.AddCalculation(new LambdaCalcNode<int>(x => x[0] + x[1], new AbstractNode<int>[] { Val1, Val2 }));
+            Calc = builder.AddCalculation(LambdaCalcNode.Create(new AbstractNode<int>[] { Val1, Val2 }, x => x[0] + x[1]));
             Sum = builder.AddCalculation(new SumNode<int>(new[] { Val1, Val2 }));
             Product = builder.AddCalculation(new ProductNode<int>(new[] { Val1, Val2 }));
             StrNode = builder.AddCalculation(new MyBinaryNode(Val3, Val1));
@@ -78,7 +78,7 @@
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = new InputNode<int>();
-            var result = builder.AddCalculation(new LambdaCalcNode<int>(x => x[0] + x[1], new[] { val1, val2 }));
+            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => x[0] + x[1]));
             Assert.ThrowsException<KeyNotFoundException>(() => builder.Build(skipCalculation: true).Commit(parallel: false));
         }
 
@@ -122,7 +122,7 @@
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = builder.AddInput(new InputNode<int>(), 2);
-            var result = builder.AddCalculation(new LambdaCalcNode<int>(x => x[0] + x[1], new[] { val1, val2 }));
+            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => x[0] + x[1]));
             var state = builder.Build();
 
             Assert.AreEqual(3, state.GetValue(result));
