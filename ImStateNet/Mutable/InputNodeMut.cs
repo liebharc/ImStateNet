@@ -2,11 +2,6 @@
 
 namespace ImStateNet.Mutable
 {
-    public interface IValueChangedEventHandler
-    {
-        event EventHandler ValueChanged;
-    }
-
     public interface IInputNodeMut : IDisposable, IValueChangedEventHandler
     {
         object Value { get; set; }
@@ -30,6 +25,7 @@ namespace ImStateNet.Mutable
         {
             _state = state;
             _node = node;
+            _state.RegisterInput<T>(node);
             _state.OnStateChanged += OnStateChanged;
         }
 
@@ -42,6 +38,8 @@ namespace ImStateNet.Mutable
 
             ValueChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        public InputNode<T> Node => _node;
 
         public T Value
         {
@@ -83,6 +81,7 @@ namespace ImStateNet.Mutable
                 if (disposing)
                 {
                     _state.OnStateChanged -= OnStateChanged;
+                    _state.RemoveNodeAndItsDependencies(_node);
                 }
 
                 disposedValue = true;

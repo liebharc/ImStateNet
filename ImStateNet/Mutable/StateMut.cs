@@ -16,7 +16,7 @@ namespace ImStateNet.Mutable
         }
 
 #pragma warning disable CS8601 // Possible null reference assignment.
-        public void Register<T>(InputNode<T> inputNode, T initialValue = default)
+        public void RegisterInput<T>(InputNode<T> inputNode, T initialValue = default)
 #pragma warning restore CS8601 // Possible null reference assignment.
         {
             lock (_lock)
@@ -27,7 +27,7 @@ namespace ImStateNet.Mutable
             }
         }
 
-        public void Register(IDerivedNode derivedNode)
+        public void RegisterDerived(IDerivedNode derivedNode)
         {
             lock (_lock)
             {

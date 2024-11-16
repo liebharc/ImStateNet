@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using ImStateNet.Mutable;
+using System.Collections.Concurrent;
 
 namespace ImStateNet.Test
 {
@@ -8,7 +9,8 @@ namespace ImStateNet.Test
         [TestMethod]
         public void StateConcurrencyTest()
         {
-            var inputs = Enumerable.Range(1, 128).Select(_ => new InputPropertyWithState()).ToList();
+            var state = new StateMut();
+            var inputs = Enumerable.Range(1, 128).Select(_ => new InputPropertyWithState(state)).ToList();
             using var allNodes = new DisposableList(inputs);
             List<IValueChangeTriggerWithState> lastLevel = new List<IValueChangeTriggerWithState>(inputs);
             List<IValueChangeTriggerWithState> nextLevel = new();
@@ -16,7 +18,7 @@ namespace ImStateNet.Test
             {
                 foreach (var chunk in lastLevel.Chunk(2))
                 {
-                    nextLevel.Add(new DelayedSumNode(chunk.ToArray()));
+                    nextLevel.Add(new DelayedSumNode(state, chunk.ToArray()));
                 }
 
                 allNodes.AddRange(nextLevel);
@@ -45,7 +47,7 @@ namespace ImStateNet.Test
 
             Task.WaitAll(tasks.ToArray());
 
-            while (!EventHandlerState.GlobalState.IsConsistent)
+            while (!state.IsConsistent)
             {
                 Thread.Sleep(10);
             }
@@ -73,7 +75,7 @@ namespace ImStateNet.Test
     {
         private readonly Random _random = new Random();
 
-        public DelayedSumNode(IValueChangeTriggerWithState[] triggers) : base(triggers)
+        public DelayedSumNode(StateMut state, IValueChangeTriggerWithState[] triggers) : base(state, triggers)
         {
         }
         protected override int CalculateSum(IList<int> inputs)

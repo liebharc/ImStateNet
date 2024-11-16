@@ -6,6 +6,10 @@ namespace ImStateNet.Test
     using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+    /// <summary>
+    /// This example shows how we can hide state behind an ordinary 
+    /// C# class with properties.
+    /// </summary>
     public class PropertiesBackedByState
     {
         private State _state;

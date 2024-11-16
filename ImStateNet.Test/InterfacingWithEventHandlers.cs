@@ -1,16 +1,23 @@
 ﻿using ImStateNet.Core;
 using ImStateNet.Extensions;
 using ImStateNet.Mutable;
+using System.Xml.Linq;
 
 namespace ImStateNet.Test
 {
+    /// <summary>
+    /// This example shows how we mimic this interface.
+    /// </summary>
     public interface IValueChangeTrigger
     {
         int Value { get; }
 
-        event EventHandler Changed;
+        event EventHandler ValueChanged;
     }
 
+    /// <summary>
+    /// Example class of an input property without state, this serves for comparison.
+    /// </summary>
     public class InputProperty : IValueChangeTrigger
     {
         private int _value;
@@ -21,13 +28,16 @@ namespace ImStateNet.Test
             set
             {
                 _value = value;
-                Changed?.Invoke(this, EventArgs.Empty);
+                ValueChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
-        public event EventHandler? Changed;
+        public event EventHandler? ValueChanged;
     }
 
+    /// <summary>
+    /// Example class of a derivced property without state, this serves for comparison.
+    /// </summary>
     public class SumEventHandler : IValueChangeTrigger, IDisposable
     {
         private readonly IValueChangeTrigger[] _triggers;
@@ -38,7 +48,7 @@ namespace ImStateNet.Test
 
             foreach (var trigger in _triggers)
             {
-                trigger.Changed += Trigger_Changed;
+                trigger.ValueChanged += Trigger_Changed;
             }
         }
 
@@ -47,7 +57,7 @@ namespace ImStateNet.Test
             Task.Run(() =>
             {
                 Value = _triggers.Select(x => x.Value).Sum();
-                Changed?.Invoke(this, EventArgs.Empty);
+                ValueChanged?.Invoke(this, EventArgs.Empty);
             });
         }
 
@@ -61,20 +71,11 @@ namespace ImStateNet.Test
 
             foreach (var trigger in _triggers)
             {
-                trigger.Changed -= Trigger_Changed;
+                trigger.ValueChanged -= Trigger_Changed;
             }
         }
 
-        public event EventHandler? Changed;
-    }
-
-    public class EventHandlerState
-    {
-        /// <summary>
-        /// The state doesn't need to be global. We do this in this example
-        /// to show that the interface can be the same (e.g. <see cref="InputProperty"/> and <see cref="InputPropertyWithState"/>).
-        /// </summary>
-        public static StateMut GlobalState { get; } = new StateMut();
+        public event EventHandler? ValueChanged;
     }
 
     public interface IValueChangeTriggerWithState : IValueChangeTrigger, IDisposable
@@ -82,53 +83,20 @@ namespace ImStateNet.Test
         INode Node { get; }
     }
 
-    public sealed class InputPropertyWithState : IValueChangeTriggerWithState
+    public sealed class InputPropertyWithState : InputNodeMut<int>, IValueChangeTriggerWithState
     {
-        private readonly InputNode<int> _node;
-
-        public InputPropertyWithState()
+        public InputPropertyWithState(StateMut state) : base(state, new InputNode<int>())
         {
-            _node = new InputNode<int>();
-            EventHandlerState.GlobalState.Register(_node);
-            EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
         }
 
-        private void OnStateChanged(object? sender, ISet<INode> e)
-        {
-            if (e.Contains(_node))
-            {
-                Changed?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
-        public void Dispose()
-        {
-            EventHandlerState.GlobalState.RemoveNodeAndItsDependencies(_node);
-        }
-
-        public int Value
-        {
-            get => EventHandlerState.GlobalState.GetValue(_node);
-            set
-            {
-                EventHandlerState.GlobalState.SetValueAsync(_node, value);
-            }
-        }
-
-        public INode Node => _node;
-
-        public event EventHandler? Changed;
+        INode IValueChangeTriggerWithState.Node => Node;
     }
 
-    public class SumEventHandlerWithState : IValueChangeTriggerWithState
+    public class SumEventHandlerWithState : DerivedNodeMut<int>, IValueChangeTriggerWithState
     {
-        private readonly DerivedNode<int> _node;
-
-        public SumEventHandlerWithState(IValueChangeTriggerWithState[] triggers)
+        public SumEventHandlerWithState(StateMut state, IValueChangeTriggerWithState[] triggers)
         {
-            _node = new LambdaCalcNode<int>(CalculateSum, triggers.Select(t => t.Node).ToList());
-            EventHandlerState.GlobalState.Register(_node);
-            EventHandlerState.GlobalState.OnStateChanged += OnStateChanged;
+            Init(state, new LambdaCalcNode<int>(CalculateSum, triggers.Select(t => t.Node).ToList()));
         }
 
         protected virtual int CalculateSum(IList<int> inputs)
@@ -140,26 +108,6 @@ namespace ImStateNet.Test
             return sum;
         }
 
-        private void OnStateChanged(object? sender, ISet<INode> e)
-        {
-            if (e.Contains(_node))
-            {
-                Changed?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
-        public void Dispose()
-        {
-            EventHandlerState.GlobalState.RemoveNodeAndItsDependencies(_node);
-        }
-
-        public int Value
-        {
-            get => EventHandlerState.GlobalState.GetValue(_node);
-        }
-
-        public INode Node => _node;
-
-        public event EventHandler? Changed;
+        INode IValueChangeTriggerWithState.Node => Node;
     }
 }

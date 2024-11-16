@@ -2,6 +2,11 @@
 
 namespace ImStateNet.Mutable
 {
+    public interface IValueChangedEventHandler
+    {
+        event EventHandler ValueChanged;
+    }
+
     public interface IDerivedNodeMut : IDisposable, IValueChangedEventHandler
     {
         object Value { get; }
@@ -14,16 +19,21 @@ namespace ImStateNet.Mutable
 
     public abstract class DerivedNodeMut<T> : IDerivedNodeMut<T>
     {
-        private readonly StateMut _state;
-        private readonly InputNode<T> _node;
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        private StateMut _state;
+        private DerivedNode<T> _node;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         private bool disposedValue;
 
-        public DerivedNodeMut(StateMut state, InputNode<T> node)
+        public void Init(StateMut state, DerivedNode<T> node)
         {
             _state = state;
             _node = node;
+            _state.RegisterDerived(node);
             _state.OnStateChanged += OnStateChanged;
         }
+
+        public DerivedNode<T> Node => _node;
 
         private void OnStateChanged(object? sender, ISet<INode> changedNodes)
         {
@@ -58,6 +68,7 @@ namespace ImStateNet.Mutable
                 if (disposing)
                 {
                     _state.OnStateChanged -= OnStateChanged;
+                    _state.RemoveNodeAndItsDependencies(_node);
                 }
 
                 disposedValue = true;

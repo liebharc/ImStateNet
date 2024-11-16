@@ -6,6 +6,13 @@ namespace ImStateNet.Test
     using ImStateNet.Examples;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+    /// <summary>
+    /// This test shows example for advanced patterns which deal with
+    /// diverging states and how you can reconsolidate them.
+    /// 
+    /// There is no real use case for this, just some creative use of the 
+    /// state pattern.
+    /// </summary>
     [TestClass]
     public class AdvancedPatternsTest
     {
@@ -67,6 +74,7 @@ namespace ImStateNet.Test
 
             Assert.ThrowsException<InvalidOperationException>(() => RebaseChanges(differentStateBuilder.Build(), state4));
         }
+
         public static State MergeChanges(State state1, State state2)
         {
             if (state1.VersionId != state2.VersionId)

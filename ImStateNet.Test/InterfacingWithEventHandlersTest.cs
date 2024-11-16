@@ -1,5 +1,6 @@
 ﻿using ImStateNet.Core;
 using ImStateNet.Extensions;
+using ImStateNet.Mutable;
 
 namespace ImStateNet.Test
 {
@@ -16,7 +17,7 @@ namespace ImStateNet.Test
             var val2 = new InputProperty();
             using var sum = new SumEventHandler(new IValueChangeTrigger[] { val1, val2 });
             using var semaphore = new SemaphoreSlim(0, 2);
-            sum.Changed += (_, _) => semaphore.Release();
+            sum.ValueChanged += (_, _) => semaphore.Release();
             val1.Value = 2;
             await semaphore.WaitAsync(5000);
             val2.Value = 3;
@@ -27,11 +28,12 @@ namespace ImStateNet.Test
         [TestMethod]
         public async Task EventsBackedByStateTest()
         {
-            using var val1 = new InputPropertyWithState();
-            using var val2 = new InputPropertyWithState();
-            using var sum = new SumEventHandlerWithState(new IValueChangeTriggerWithState[] { val1, val2 });
+            var state = new StateMut();
+            using var val1 = new InputPropertyWithState(state);
+            using var val2 = new InputPropertyWithState(state);
+            using var sum = new SumEventHandlerWithState(state, new IValueChangeTriggerWithState[] { val1, val2 });
             using var semaphore = new SemaphoreSlim(0, 2);
-            sum.Changed += (_, _) => semaphore.Release();
+            sum.ValueChanged += (_, _) => semaphore.Release();
             val1.Value = 2;
             await semaphore.WaitAsync(5000);
             val2.Value = 3;
@@ -42,12 +44,13 @@ namespace ImStateNet.Test
         [TestMethod]
         public async Task EventsBackedByStateInOneCommitTest()
         {
-            using var val1 = new InputPropertyWithState();
-            using var val2 = new InputPropertyWithState();
-            using var sum = new SumEventHandlerWithState(new IValueChangeTriggerWithState[] { val1, val2 });
+            var state = new StateMut();
+            using var val1 = new InputPropertyWithState(state);
+            using var val2 = new InputPropertyWithState(state);
+            using var sum = new SumEventHandlerWithState(state, new IValueChangeTriggerWithState[] { val1, val2 });
             using var semaphore = new SemaphoreSlim(0, 1);
-            sum.Changed += (_, _) => semaphore.Release();
-            await using (var _ = EventHandlerState.GlobalState.DisableAutoCommit())
+            sum.ValueChanged += (_, _) => semaphore.Release();
+            await using (var _ = state.DisableAutoCommit())
             {
                 val1.Value = 2;
                 val2.Value = 3;
