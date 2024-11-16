@@ -4,6 +4,7 @@
     using ImStateNet.Examples;
     using ImStateNet.Extensions;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using System.Collections.Immutable;
 
     public class LazySumState
     {
@@ -31,7 +32,11 @@
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 
-        public void Commit() => (State, _) = State.Commit();
+        public ImmutableHashSet<INode> Commit()
+        {
+            (State, var changes) = State.Commit();
+            return changes;
+        }
 
         public int NumberOfChanges() => State.Changes.Count;
     }
@@ -50,6 +55,26 @@
             Assert.AreEqual(11, state.GetValue(state.FinalSum));
             Assert.AreEqual(5, state.GetValue(state.Sum));
             Assert.AreEqual(6, state.GetValue(state.Product));
+        }
+
+        [TestMethod]
+        public void TestLazyNodesAreMarkedAsChangedIfInputChanges()
+        {
+            var state = new LazySumState();
+
+            state.SetValue(state.Val1, 100);
+            var changes = state.Commit();
+            CollectionAssert.AreEquivalent(changes, new INode[] { state.Val1, state.Sum, state.FinalSum, state.Product });
+        }
+
+        [TestMethod]
+        public void TestLazyNodesAreNotMarkedAsChangedIfInputsRemainUnchanged()
+        {
+            var state = new LazySumState();
+
+            state.SetValue(state.Val3, 100);
+            var changes = state.Commit();
+            CollectionAssert.AreEquivalent(changes, new INode[] { state.Val3 });
         }
 
         [TestMethod]
