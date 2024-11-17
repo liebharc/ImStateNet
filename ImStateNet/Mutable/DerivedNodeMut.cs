@@ -35,9 +35,9 @@ namespace ImStateNet.Mutable
 
         public DerivedNode<T> Node => _node;
 
-        private void OnStateChanged(object? sender, ISet<INode> changedNodes)
+        private void OnStateChanged(object? sender, StateChangedEventArgs args)
         {
-            if (!changedNodes.Contains(_node))
+            if (!args.Changes.Contains(_node))
             {
                 return;
             }

@@ -129,9 +129,18 @@
             }
         }
 
+        /// <summary>
+        /// Applies all <see cref="Changes"/> to the curent state by calculating all derived values.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token, if cancelled then the state will stop calculating more nodes and return.</param>
+        /// <param name="parallel">Indicates whether or not the calculation should be parallized. Disable this for debugging if you want to see clearer stack traces.</param>
+        /// <returns>A state with no more <see cref="Changes"/> - unless the calculation was cancelled.</returns>
         public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null, bool parallel = true)
         {
-            if (_changes.IsEmpty) return (this, ImmutableHashSet<INode>.Empty);
+            if (_changes.IsEmpty) 
+            { 
+                return (this, ImmutableHashSet<INode>.Empty); 
+            }
 
             var values = _values;
             var changes = _changes;

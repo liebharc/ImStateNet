@@ -2,12 +2,16 @@
 
 namespace ImStateNet.Mutable
 {
-    public class TaskDispatcher
+    /// <summary>
+    /// Dispatches all calculations to another thread. Tasks 
+    /// are executed one after the other.
+    /// </summary>
+    public class SequentialTaskQueue
     {
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly ActionBlock<Func<Task>> _actionBlock;
 
-        public TaskDispatcher()
+        public SequentialTaskQueue()
         {
             _actionBlock = new ActionBlock<Func<Task>>(async func =>
             {
@@ -18,6 +22,13 @@ namespace ImStateNet.Mutable
             });
         }
 
+        /// <summary>
+        /// Adds task to the queue.
+        /// </summary>
+        /// <typeparam name="T">Result type of the task</typeparam>
+        /// <param name="task">The task to be executed.</param>
+        /// <param name="cancellationTokenSource">A cancellation token for the task. If a task is queued, then the previous tokens are cancelled.</param>
+        /// <returns>The async task</returns>
         public Task<T> EnqueueTask<T>(Func<T> task, CancellationTokenSource cancellationTokenSource)
         {
             lock (_actionBlock)
@@ -26,7 +37,7 @@ namespace ImStateNet.Mutable
                 _cancellationTokenSource = cancellationTokenSource;
                 var tcs = new TaskCompletionSource<T>();
 
-                _actionBlock.Post(async () =>
+                _actionBlock.Post(() =>
                 {
                     try
                     {
@@ -37,9 +48,34 @@ namespace ImStateNet.Mutable
                     {
                         tcs.SetException(ex);
                     }
+
+                    return Task.CompletedTask;
                 });
 
                 return tcs.Task; // Return the Task representing the result.
+            }
+        }
+        public Task WaitUntilAllTasksUntilNowHaveBeenCompleted()
+        {
+            lock (_actionBlock)
+            {
+                var tcs = new TaskCompletionSource();
+
+                _actionBlock.Post(() =>
+                {
+                    try
+                    {
+                        tcs.SetResult();
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.SetException(ex);
+                    }
+
+                    return Task.CompletedTask;
+                });
+
+                return tcs.Task; 
             }
         }
     }

@@ -59,7 +59,7 @@ namespace ImStateNet.Test
             }
 
             Task.WaitAll(tasks.ToArray());
-            await state.CommitAsync(allowCancellation: false);
+            await state.WaitForAllPendingCalculationsToFinish();
 
             var expectedSum = lastValues.Values.Sum();
             Assert.AreEqual(expectedSum, lastSum.Value);
