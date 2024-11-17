@@ -84,6 +84,8 @@
 
         bool IsLazy { get; }
 
+        object? DefaultValue { get; }
+
         Task<object?> Calculate(IReadOnlyList<object?> inputs);
     }
 
@@ -113,6 +115,8 @@
         public IReadOnlyList<INode> Dependencies => _dependencies;
 
         public bool IsLazy { get; init; }
+
+        public virtual object? DefaultValue => default(T);
 
         /// <summary>
         /// Calculates the value of the node based on the inputs.

@@ -57,7 +57,7 @@
     }
 
     [TestClass]
-    public class AdditionalNodeTests
+    public class StateTest
     {
         [TestMethod]
         public async Task TestValidState()
@@ -143,6 +143,17 @@
             Assert.AreEqual(4, state.GetValue(result));
             CollectionAssert.AreEquivalent(new INode[] { val1, result }, changes);
         }
-    }
 
+        [TestMethod]
+        public void TestDefaultValues()
+        {
+            var builder = new StateBuilder();
+            var val1 = builder.AddInput(new InputNode<int>(), 1);
+            var val2 = builder.AddInput(new InputNode<int>(), 2);
+            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => Task.FromResult(x[0] + x[1])));
+            var state = builder.Build();
+
+            Assert.AreEqual(0, state.GetValue(result));
+        }
+    }
 }

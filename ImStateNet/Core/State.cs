@@ -102,6 +102,11 @@
                 return _values[node];
             }
 
+            if (node is not IDerivedNode derivedNode || !derivedNode.IsLazy)
+            {
+                throw new InvalidOperationException(node.Name + " is not part of state");
+            }
+
             await LazyValueLock.WaitAsync();
             try
             {
