@@ -29,7 +29,7 @@ namespace ImStateNet.Mutable
         /// <param name="task">The task to be executed.</param>
         /// <param name="cancellationTokenSource">A cancellation token for the task. If a task is queued, then the previous tokens are cancelled.</param>
         /// <returns>The async task</returns>
-        public Task<T> EnqueueTask<T>(Func<T> task, CancellationTokenSource cancellationTokenSource)
+        public Task<T> EnqueueTask<T>(Func<Task<T>> task, CancellationTokenSource cancellationTokenSource)
         {
             lock (_actionBlock)
             {
@@ -37,11 +37,11 @@ namespace ImStateNet.Mutable
                 _cancellationTokenSource = cancellationTokenSource;
                 var tcs = new TaskCompletionSource<T>();
 
-                _actionBlock.Post(() =>
+                _actionBlock.Post(async () =>
                 {
                     try
                     {
-                        var result = task();
+                        var result = await task();
                         tcs.SetResult(result);
                     }
                     catch (Exception ex)
@@ -49,7 +49,6 @@ namespace ImStateNet.Mutable
                         tcs.SetException(ex);
                     }
 
-                    return Task.CompletedTask;
                 });
 
                 return tcs.Task; // Return the Task representing the result.

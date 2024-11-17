@@ -27,7 +27,12 @@
 
         public int GetLevel(INode node)
         {
-            return _nodeToLevel[node];
+            if (_nodeToLevel.TryGetValue(node, out var level))
+            {
+                return level;
+            }
+
+            throw new InvalidOperationException(node.Name + " is not part of state");
         }
 
         private static IReadOnlyList<IReadOnlyList<IDerivedNode>> GetLevels(IEnumerable<INode> nodes)

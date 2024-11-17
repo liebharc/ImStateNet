@@ -27,7 +27,7 @@
             _node = node;
         }
 
-        public override U Calculate(IReadOnlyList<object?> inputs)
+        public override Task<U> Calculate(IReadOnlyList<object?> inputs)
         {
             if (_node == null)
                 throw new InvalidOperationException("Placeholder node has not been assigned a value yet");

@@ -1,6 +1,7 @@
 namespace ImStateNet.Test
 {
     using System.Collections.Generic;
+    using System.Resources;
     using ImStateNet.Core;
     using ImStateNet.Examples;
     using ImStateNet.Extensions;
@@ -24,13 +25,19 @@ namespace ImStateNet.Test
             _val2 = builder.AddInput(new NumericMinMaxNode<int>(1, 5, "val2"), 2);
             _result = builder.AddCalculation(new SumNode<int>(new List<AbstractNode<int>> { _val1, _val2 }, "result"));
             _state = builder.Build();
+            Init().Wait();
+        }
+
+        private async Task Init()
+        {
+            (_state, _) = await _state.Commit();
         }
 
         private T? GetValue<T>(AbstractNode<T> node) => _state.GetValue(node);
 
-        private void SetValue<T>(InputNode<T> node, T value)
+        private async Task SetValue<T>(InputNode<T> node, T value)
         {
-            (_state, _) = _state.ChangeValue(node, value).Commit();
+            (_state, _) = await _state.ChangeValue(node, value).Commit();
         }
 
         public int Result => GetValue(_result);
@@ -38,14 +45,14 @@ namespace ImStateNet.Test
         public int Val1
         {
             get => GetValue(_val1);
-            set => SetValue(_val1, value);
+            set => SetValue(_val1, value).Wait();
         }
 
         public int Val2 => GetValue(_val2);
 
-        public void SetVal1AndVal2(int val1, int val2)
+        public async Task SetVal1AndVal2(int val1, int val2)
         {
-            (_state, _) = _state.ChangeValue(_val1, val1).ChangeValue(_val2, val2).Commit();
+            (_state, _) = await _state.ChangeValue(_val1, val1).ChangeValue(_val2, val2).Commit();
         }
     }
 
@@ -53,7 +60,7 @@ namespace ImStateNet.Test
     public class StateMutTests
     {
         [TestMethod]
-        public void PropertiesBackedByStateTest()
+        public async Task PropertiesBackedByStateTest()
         {
             var state = new PropertiesBackedByState();
             Assert.AreEqual(3, state.Result);
@@ -63,7 +70,7 @@ namespace ImStateNet.Test
             state.Val1 = 3;
             Assert.AreEqual(5, state.Result);
 
-            state.SetVal1AndVal2(4, 5);
+            await state.SetVal1AndVal2(4, 5);
             Assert.AreEqual(9, state.Result);
         }
     }

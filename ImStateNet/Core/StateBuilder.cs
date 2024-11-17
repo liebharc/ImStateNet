@@ -106,7 +106,7 @@
             return result;
         }
 
-        public State Build(bool skipCalculation = false)
+        public State Build()
         {
             var nodes = RemoveMarkedNodes(SortedNodes());
             foreach (var node in nodes.OfType<IDerivedNode>())
@@ -115,13 +115,14 @@
             }
 
             var metaInfo = new CalculationNodesNetwork(nodes.ToImmutableList());
-            var state = new State(metaInfo, _initialValues.ToImmutableDictionary(), changes: nodes.Where(n => !_nodesWithInitialValues.Contains(n)).ToImmutableHashSet());
-            if (skipCalculation)
-            {
-                return state;
-            }
+            return new State(metaInfo, _initialValues.ToImmutableDictionary(), changes: nodes.Where(n => !_nodesWithInitialValues.Contains(n)).ToImmutableHashSet());
+        }
 
-            return state.Commit().Item1;
+        public async Task<State> BuildAndCommit()
+        {
+            var state = Build();
+            var result = await state.Commit();
+            return result.Item1;
         }
     }
 }

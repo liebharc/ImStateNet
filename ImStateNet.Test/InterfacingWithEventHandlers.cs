@@ -99,13 +99,13 @@ namespace ImStateNet.Test
             Init(state, LambdaCalcNode.Create(triggers.Select(t => t.Node).ToList(), CalculateSum));
         }
 
-        protected virtual int CalculateSum(IReadOnlyList<int> inputs)
+        protected virtual Task<int> CalculateSum(IReadOnlyList<int> inputs)
         {
             // We can't use triggers here as they only provide the last
             // committed changes, but here we need to provide a result for an ongoing
             // calculation
             var sum = inputs.Sum();
-            return sum;
+            return Task.FromResult(sum);
         }
 
         AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
@@ -125,7 +125,7 @@ namespace ImStateNet.Test
     {
         public AddFloatWithIntNode(StateMut state, AbstractNode<float> floatNode, AbstractNode<int> intNode)
         {
-            Init(state, LambdaCalcNode.Create(floatNode, intNode, (a, b) => (int)(a + b)));
+            Init(state, LambdaCalcNode.Create(floatNode, intNode, (a, b) => Task.FromResult((int)(a + b))));
         }
 
         AbstractNode<int> IValueChangeTriggerWithState.Node => Node;

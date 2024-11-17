@@ -4,16 +4,22 @@
     using System.Collections.Generic;
     using System.Collections.Immutable;
     using System.Linq;
+    using System.Threading;
 
     public class State
     {
         private static readonly object LazyValue = new object();
-        private readonly object LazyValueLock = new object();
+        private readonly SemaphoreSlim LazyValueLock = new SemaphoreSlim(1, 1);
         private readonly CalculationNodesNetwork _metaInfo;
         private ImmutableDictionary<INode, object?> _values;
         private readonly ImmutableHashSet<INode> _changes;
         private readonly ImmutableDictionary<INode, object?> _initialValues;
         private readonly Guid _versionId;
+
+        public static State CreateEmptyState()
+        {
+            return new State(new CalculationNodesNetwork(ImmutableList<INode>.Empty), ImmutableDictionary<INode, object?>.Empty);
+        }
 
         public State(
             CalculationNodesNetwork metaInfo,
@@ -72,17 +78,42 @@
         /// <returns>The current value of the node</returns>
         public object? GetObjValue(INode node)
         {
+            var asyncResult = GetObjValueAsync(node);
+            asyncResult.Wait();
+            return asyncResult.Result;
+        }
+
+        /// <summary>
+        /// Async version of <see cref="GetValue{T}(AbstractNode{T})"/>. This only matters if you use lazy nodes.
+        /// </summary>
+        public async Task<T?> GetValueAsync<T>(AbstractNode<T> node)
+        {
+            return (T?)await GetObjValueAsync(node);
+        }
+
+        /// <summary>
+        /// Async version of <see cref="GetObjValue(INode)"/>. This only matters if you use lazy nodes.
+        /// </summary>
+        public async Task<object?> GetObjValueAsync(INode node)
+        {
             bool hasValue = _values.TryGetValue(node, out var value);
             if (hasValue && value != LazyValue)
             {
                 return _values[node];
             }
 
-            lock (LazyValueLock)
+            await LazyValueLock.WaitAsync();
+            try
             {
+
                 var toBeCalculated = GetAllDependenciesRecursive((IDerivedNode)node);
-                CalculateListOfLazyNodes(toBeCalculated);
+
+                await CalculateListOfLazyNodes(toBeCalculated);
                 return _values[node];
+            }
+            finally
+            {
+                LazyValueLock.Release();
             }
         }
 
@@ -101,24 +132,25 @@
             return result;
         }
 
-        private void CalculateListOfLazyNodes(IList<IDerivedNode> nodes)
+        private async Task CalculateListOfLazyNodes(IList<IDerivedNode> nodes)
         {
             var groupedByLevel = nodes.GroupBy(n => _metaInfo.GetLevel(n)).OrderBy(g => g.Key);
             var values = _values;
             foreach (var level in groupedByLevel)
             {
                 var results = level.AsParallel().Select(ProcessNode);
-                foreach (var result in results)
+                foreach (var resultTask in results)
                 {
+                    var result = await resultTask;
                     values = values.SetItem(result.Node, result.NewValue);
                 }
             }
 
             _values = values;
 
-            IntermediateCommitResult ProcessNode(IDerivedNode node)
+            async Task<IntermediateCommitResult> ProcessNode(IDerivedNode node)
             {
-                var newValue = node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
+                var newValue = await node.Calculate(node.Dependencies.Select(dep => values[dep]).ToList());
                 return new IntermediateCommitResult
                 {
                     Node = node,
@@ -135,7 +167,7 @@
         /// <param name="cancellationToken">A cancellation token, if cancelled then the state will stop calculating more nodes and return.</param>
         /// <param name="parallel">Indicates whether or not the calculation should be parallized. Disable this for debugging if you want to see clearer stack traces.</param>
         /// <returns>A state with no more <see cref="Changes"/> - unless the calculation was cancelled.</returns>
-        public (State, ImmutableHashSet<INode>) Commit(CancellationToken? cancellationToken = null, bool parallel = true)
+        public async Task<(State, ImmutableHashSet<INode>)> Commit(CancellationToken? cancellationToken = null, bool parallel = true)
         {
             if (_changes.IsEmpty) 
             { 
@@ -156,7 +188,7 @@
                 }
 
 
-                IEnumerable<IntermediateCommitResult> resultsInThisLevel;
+                IEnumerable<Task<IntermediateCommitResult>> resultsInThisLevel;
                 if (parallel && !cancellation.IsCancellationRequested)
                 {
                     resultsInThisLevel = level.AsParallel().Select(ProcessNode);
@@ -166,8 +198,9 @@
                     resultsInThisLevel = level.Select(ProcessNode);
                 }
 
-                foreach (var result in resultsInThisLevel)
+                foreach (var resultTask in resultsInThisLevel)
                 {
+                    var result = await resultTask;
                     if (result.IsUnprocessed)
                     {
                         unprocessedChanges = unprocessedChanges.Add(result.Node);
@@ -183,7 +216,7 @@
             var newState = new State(_metaInfo, values, unprocessedChanges, values);
             return (newState, changes);
 
-            IntermediateCommitResult ProcessNode(IDerivedNode node)
+            async Task<IntermediateCommitResult> ProcessNode(IDerivedNode node)
             {
                 var anyDepsChanged = changes.Contains(node) || !changes.Intersect(node.Dependencies).IsEmpty;
                 if (node.IsLazy)
@@ -223,7 +256,7 @@
                 }
 
                 var inputs = node.Dependencies.Select(dep => values[dep]).ToList();
-                var newValue = node.Calculate(inputs);
+                var newValue = await node.Calculate(inputs);
                 var oldValue = _initialValues.TryGetValue(node, out var old);
                 var haveValuesChanged = !oldValue || !node.AreValuesEqual(old, newValue);
                 return new IntermediateCommitResult

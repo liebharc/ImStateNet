@@ -1,6 +1,5 @@
 ﻿namespace ImStateNet.Test
 {
-    using System;
     using ImStateNet.Core;
     using ImStateNet.Examples;
     using ImStateNet.Extensions;
@@ -12,9 +11,9 @@
         {
         }
 
-        protected override string Calculation(double value1, int value2)
+        protected override Task<string?> Calculation(double value1, int value2)
         {
-            return (value1 + value2).ToString();
+            return Task.FromResult<string?>((value1 + value2).ToString());
         }
     }
 
@@ -35,18 +34,24 @@
             Val1 = builder.AddInput(new InputNode<int>(), 1);
             Val2 = builder.AddInput(new NumericMinMaxNode<int>(1, 5), 2);
             Val3 = builder.AddInput(new InputNode<double>(), 3.0);
-            Calc = builder.AddCalculation(LambdaCalcNode.Create(new AbstractNode<int>[] { Val1, Val2 }, x => x[0] + x[1]));
+            Calc = builder.AddCalculation(LambdaCalcNode.Create(new AbstractNode<int>[] { Val1, Val2 }, x => Task.FromResult(x[0] + x[1])));
             Sum = builder.AddCalculation(new SumNode<int>(new[] { Val1, Val2 }));
             Product = builder.AddCalculation(new ProductNode<int>(new[] { Val1, Val2 }));
             StrNode = builder.AddCalculation(new MyBinaryNode(Val3, Val1));
             State = builder.Build();
+            Init().Wait();
+        }
+
+        private async Task Init()
+        {
+            (State, _) = await State.Commit();
         }
 
         public T? GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 
-        public void Commit() => (State, _) = State.Commit();
+        public async Task Commit() => (State, _) = await State.Commit();
 
         public int NumberOfChanges() => State.Changes.Count;
     }
@@ -55,7 +60,7 @@
     public class AdditionalNodeTests
     {
         [TestMethod]
-        public void TestValidState()
+        public async Task TestValidState()
         {
             var state = new SimpleSumState();
             var initialId = state.State.VersionId;
@@ -63,7 +68,7 @@
 
             state.SetValue(state.Val1, 3);
             Assert.AreEqual(initialId, state.State.VersionId);
-            state.Commit();
+            await state.Commit();
             Assert.AreNotEqual(initialId, state.State.VersionId);
 
             Assert.AreEqual(5, state.GetValue(state.Calc));
@@ -73,23 +78,23 @@
         }
 
         [TestMethod]
-        public void TestMissingDependency()
+        public async Task TestMissingDependency()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = new InputNode<int>();
-            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => x[0] + x[1]));
-            Assert.ThrowsException<KeyNotFoundException>(() => builder.Build(skipCalculation: true).Commit(parallel: false));
+            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => Task.FromResult(x[0] + x[1])));
+            await Assert.ThrowsExceptionAsync<KeyNotFoundException>(async () => await builder.Build().Commit(parallel: false));
         }
 
         [TestMethod]
-        public void TestChangeMinMaxNode()
+        public async Task TestChangeMinMaxNode()
         {
             var state = new SimpleSumState();
             Assert.AreEqual(2, state.GetValue(state.Val2));
 
             state.SetValue(state.Val2, 6);
-            state.Commit();
+            await state.Commit();
 
             Assert.AreEqual(5, state.GetValue(state.Val2));
         }
@@ -117,13 +122,13 @@
         }
 
         [TestMethod]
-        public void TestExample()
+        public async Task TestExample()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = builder.AddInput(new InputNode<int>(), 2);
-            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => x[0] + x[1]));
-            var state = builder.Build();
+            var result = builder.AddCalculation(LambdaCalcNode.Create(new[] { val1, val2 }, x => Task.FromResult(x[0] + x[1])));
+            var state = await builder.BuildAndCommit();
 
             Assert.AreEqual(3, state.GetValue(result));
 
@@ -133,7 +138,7 @@
             state = state.ChangeValue(val1, 1);
             Assert.IsTrue(state.IsConsistent);
 
-            (state, var changes) = state.ChangeValue(val1, 2).Commit();
+            (state, var changes) = await state.ChangeValue(val1, 2).Commit();
             Assert.IsTrue(state.IsConsistent);
             Assert.AreEqual(4, state.GetValue(result));
             CollectionAssert.AreEquivalent(new INode[] { val1, result }, changes);

@@ -1,4 +1,5 @@
 ﻿using ImStateNet.Core;
+using System.Xml.Linq;
 
 namespace ImStateNet.Mutable
 {
@@ -22,7 +23,7 @@ namespace ImStateNet.Mutable
         /// <param name="continueWithAbortedCalculations">Sets the value for <see cref="ContinueWithAbortedCalculations"/></param>
         public StateMut(bool continueWithAbortedCalculations = false)
         {
-            _state = new StateBuilder().Build();
+            _state = State.CreateEmptyState();
             ContinueWithAbortedCalculations = continueWithAbortedCalculations;
         }
 
@@ -52,43 +53,46 @@ namespace ImStateNet.Mutable
         /// <param name="inputNode">The input node.</param>
         /// <param name="initialValue">Initial value.</param>
 #pragma warning disable CS8601 // Possible null reference assignment.
-        public void RegisterInput<T>(InputNode<T> inputNode, T initialValue = default)
+        public Task RegisterInput<T>(InputNode<T> inputNode, T initialValue = default)
 #pragma warning restore CS8601 // Possible null reference assignment.
         {
-            lock (_lock)
+            return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.AddInput(inputNode, initialValue);
-                _state = builder.Build();
-            }
+                _state = await builder.BuildAndCommit();
+                return _state;
+            }, new CancellationTokenSource());
         }
 
         /// <summary>
         /// Registers a derived node.
         /// </summary>
         /// <param name="derivedNode">Dervied node.</param>
-        public void RegisterDerived(IDerivedNode derivedNode)
+        public Task RegisterDerived(IDerivedNode derivedNode)
         {
-            lock (_lock)
+            return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.AddCalculation(derivedNode);
-                _state = builder.Build();
-            }
+                _state = await builder.BuildAndCommit();
+                return _state;
+            }, new CancellationTokenSource());
         }
 
         /// <summary>
         /// Removes a node. All nodes depending on this note will also be removed.
         /// </summary>
         /// <param name="node">Node to be removed.</param>
-        public void RemoveNodeAndItsDependencies(INode node)
+        public Task RemoveNodeAndItsDependencies(INode node)
         {
-            lock (_lock)
+            return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.RemoveNodeAndAllDependents(node);
-                _state = builder.Build();
-            }
+                _state = await builder.BuildAndCommit();
+                return _state;
+            }, new CancellationTokenSource());
         }
 
         /// <summary>
@@ -96,19 +100,25 @@ namespace ImStateNet.Mutable
         /// as this way the state doesn't need to calculate the intermediate values.
         /// </summary>
         /// <param name="stateBuilder">Alter the state builder to change the configuration.</param>
-        public void RegisterNodes(Action<StateBuilder> stateBuilder)
+        public Task RegisterNodes(Action<StateBuilder> stateBuilder)
         {
-            lock (_lock)
+            return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 stateBuilder(builder);
-                _state = builder.Build();
-            }
+                _state = await builder.BuildAndCommit();
+                return _state;
+            }, new CancellationTokenSource());
         }
 
         public T? GetValue<T>(AbstractNode<T> node)
         {
             return _state.GetValue(node);
+        }
+
+        public Task<T?> GetValueAsync<T>(AbstractNode<T> node)
+        {
+            return _state.GetValueAsync(node);
         }
 
         /// <summary>
@@ -158,9 +168,9 @@ namespace ImStateNet.Mutable
             }
         }
 
-        private State UpdateState(CancellationToken token, bool allowCancellation)
+        private async Task<State> UpdateState(CancellationToken token, bool allowCancellation)
         {
-            (var stateUpdate, var changes) = _state.Commit(allowCancellation ? token : null);
+            (var stateUpdate, var changes) = await _state.Commit(allowCancellation ? token : null);
             lock (_lock)
             {
                 if (token.IsCancellationRequested)

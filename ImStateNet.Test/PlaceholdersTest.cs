@@ -21,7 +21,7 @@
         }
 
         [TestMethod]
-        public void TestValidState()
+        public async Task TestValidState()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
@@ -29,7 +29,7 @@
             var placeholder = builder.AddCalculation(new PlaceholderNode<int>());
             var result = builder.AddCalculation(new SumNode<int>(new AbstractNode<int>[] { placeholder, val2 }));
             placeholder.Assign(new ProductNode<int>(new AbstractNode<int>[] { val1, val2 }));
-            var state = builder.Build();
+            var state = await builder.BuildAndCommit();
 
             Assert.AreEqual(4, state.GetValue(result));
         }

@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 public class Program
 {
-    public static void Main()
+    public static async Task Main()
     {
         var startTime = Stopwatch.StartNew();
 
@@ -28,7 +28,7 @@ public class Program
             {
                 var randomInput = nodes[random.Next(nodes.Count)];
                 var randomOffset = random.Next(1, 11);
-                var incrementNode = LambdaCalcNode.Create(new[] { randomInput }, x => x[0] + randomOffset, $"lambda-{i}");
+                var incrementNode = LambdaCalcNode.Create(new[] { randomInput }, x => Task.FromResult(x[0] + randomOffset), $"lambda-{i}");
                 nodes.Add(builder.AddCalculation(incrementNode));
             }
             else if (i % 5 == 3)
@@ -46,7 +46,7 @@ public class Program
         }
 
         var inputs = nodes.OfType<InputNode<long>>().ToDictionary(node => node, _ => random.Next(0, 21));
-        var state = builder.Build();
+        var state = await builder.BuildAndCommit();
 
         startTime.Stop();
         Console.WriteLine($"Setup time: {startTime.Elapsed.TotalSeconds} seconds");
@@ -63,7 +63,7 @@ public class Program
             change++;
             if (change >= batchSize)
             {
-                (state, _) = state.Commit();
+                (state, _) = await state.Commit();
                 numberOfCommits++;
                 change = 0;
             }
@@ -78,7 +78,7 @@ public class Program
         builder = state.ChangeConfiguration();
         builder.RemoveNodeAndAllDependents(inputs.First().Key);
         builder.AddInput(new InputNode<int>(), 5);
-        state = builder.Build();
+        state = await builder.BuildAndCommit();
         startTime.Stop();
         Console.WriteLine($"Reconfigure time: {startTime.Elapsed.TotalSeconds} seconds (" + state.Nodes.Count + " nodes remain after the update)");
     }

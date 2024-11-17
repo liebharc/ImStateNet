@@ -25,7 +25,7 @@ namespace ImStateNet.Mutable
         {
             _state = state;
             _node = node;
-            _state.RegisterInput<T>(node);
+            _state.RegisterInput<T>(node).Wait();
             _state.OnStateChanged += OnStateChanged;
         }
 

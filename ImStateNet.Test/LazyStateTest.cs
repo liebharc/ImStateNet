@@ -26,15 +26,21 @@
             Product = builder.AddCalculation(new ProductNode<int>(new[] { Val1, Val2 }));
             FinalSum = builder.AddCalculation(new SumNode<int>(new[] { Sum, Product }));
             State = builder.Build();
+            Init().Wait();
+        }
+
+        private async Task Init()
+        {
+            (State, _) = await State.Commit();
         }
 
         public T? GetValue<T>(AbstractNode<T> node) => State.GetValue(node);
 
         public void SetValue<T>(InputNode<T> node, T value) => State = State.ChangeValue(node, value);
 
-        public ImmutableHashSet<INode> Commit()
+        public async Task<ImmutableHashSet<INode>> Commit()
         {
-            (State, var changes) = State.Commit();
+            (State, var changes) = await State.Commit();
             return changes;
         }
 
@@ -45,12 +51,12 @@
     public class LazyStateTest
     {
         [TestMethod]
-        public void TestValidState()
+        public async Task TestValidState()
         {
             var state = new LazySumState();
 
             state.SetValue(state.Val1, 3);
-            state.Commit();
+            await state.Commit();
 
             Assert.AreEqual(11, state.GetValue(state.FinalSum));
             Assert.AreEqual(5, state.GetValue(state.Sum));
@@ -58,39 +64,39 @@
         }
 
         [TestMethod]
-        public void TestLazyNodesAreMarkedAsChangedIfInputChanges()
+        public async Task TestLazyNodesAreMarkedAsChangedIfInputChanges()
         {
             var state = new LazySumState();
 
             state.SetValue(state.Val1, 100);
-            var changes = state.Commit();
+            var changes = await state.Commit();
             CollectionAssert.AreEquivalent(changes, new INode[] { state.Val1, state.Sum, state.FinalSum, state.Product });
         }
 
         [TestMethod]
-        public void TestLazyNodesAreNotMarkedAsChangedIfInputsRemainUnchanged()
+        public async Task TestLazyNodesAreNotMarkedAsChangedIfInputsRemainUnchanged()
         {
             var state = new LazySumState();
 
             state.SetValue(state.Val3, 100);
-            var changes = state.Commit();
+            var changes = await state.Commit();
             CollectionAssert.AreEquivalent(changes, new INode[] { state.Val3 });
         }
 
         [TestMethod]
-        public void TestChangeMinMaxNode()
+        public async Task TestChangeMinMaxNode()
         {
             var state = new LazySumState();
             Assert.AreEqual(2, state.GetValue(state.Val2));
 
             state.SetValue(state.Val2, 6);
-            state.Commit();
+            await state.Commit();
 
             Assert.AreEqual(5, state.GetValue(state.Val2));
         }
 
         [TestMethod]
-        public void TestChangeToSameValue()
+        public async Task TestChangeToSameValue()
         {
             var state = new LazySumState();
             state.SetValue(state.Val1, 1);
@@ -98,7 +104,7 @@
         }
 
         [TestMethod]
-        public void TestRevertingChanges()
+        public async Task TestRevertingChanges()
         {
             var state = new LazySumState();
             var value1 = state.GetValue(state.Val1);

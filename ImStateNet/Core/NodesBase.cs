@@ -84,7 +84,7 @@
 
         bool IsLazy { get; }
 
-        object? Calculate(IReadOnlyList<object?> inputs);
+        Task<object?> Calculate(IReadOnlyList<object?> inputs);
     }
 
     public abstract class DerivedNode<T> : AbstractNode<T>, IDerivedNode
@@ -119,11 +119,11 @@
         /// The caller guarantees that the inputs are in the same order
         /// as the dependencies.
         /// </summary>
-        public abstract T? Calculate(IReadOnlyList<object?> inputs);
+        public abstract Task<T?> Calculate(IReadOnlyList<object?> inputs);
 
-        object? IDerivedNode.Calculate(IReadOnlyList<object?> inputs)
+        async Task<object?> IDerivedNode.Calculate(IReadOnlyList<object?> inputs)
         {
-            return Calculate(inputs);
+            return await Calculate(inputs);
         }
     }
 }

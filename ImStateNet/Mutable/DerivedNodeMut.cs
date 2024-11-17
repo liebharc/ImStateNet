@@ -29,7 +29,7 @@ namespace ImStateNet.Mutable
         {
             _state = state;
             _node = node;
-            _state.RegisterDerived(node);
+            _state.RegisterDerived(node).Wait();
             _state.OnStateChanged += OnStateChanged;
         }
 

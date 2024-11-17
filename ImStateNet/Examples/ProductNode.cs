@@ -10,7 +10,7 @@
         public ProductNode(IReadOnlyList<AbstractNode<U>> dependencies, string? name = null)
             : base(dependencies.Cast<INode>().ToList(), name) { }
 
-        public override U Calculate(IReadOnlyList<object?> inputs)
+        public override Task<U> Calculate(IReadOnlyList<object?> inputs)
         {
             U result = (U)Convert.ChangeType(1, typeof(U));
             foreach (var value in inputs.Cast<U>())
@@ -20,7 +20,7 @@
                     result = (U)Convert.ChangeType(Convert.ToInt64(result) * Convert.ToInt64(value), typeof(U));
                 }
             }
-            return result;
+            return Task.FromResult(result);
         }
     }
 }

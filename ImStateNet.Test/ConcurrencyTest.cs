@@ -87,15 +87,15 @@ namespace ImStateNet.Test
         public DelayedSumNode(StateMut state, IValueChangeTriggerWithState[] triggers) : base(state, triggers)
         {
         }
-        protected override int CalculateSum(IReadOnlyList<int> inputs)
+        protected override async Task<int> CalculateSum(IReadOnlyList<int> inputs)
         {
             var sleep = _random.Next(10);
             if (sleep > 0)
             {
-                Thread.Sleep(sleep);
+                await Task.Delay(sleep);
             }
 
-            return base.CalculateSum(inputs);
+            return await base.CalculateSum(inputs);
         }
     }
 

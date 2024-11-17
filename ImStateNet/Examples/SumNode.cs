@@ -10,9 +10,9 @@
         public SumNode(IReadOnlyList<AbstractNode<U>> dependencies, string? name = null)
             : base(dependencies.Cast<INode>().ToList(), name) { }
 
-        public override U Calculate(IReadOnlyList<object?> inputs)
+        public override Task<U> Calculate(IReadOnlyList<object?> inputs)
         {
-            return (U)Convert.ChangeType(inputs.Cast<U>().Sum(x => Convert.ToInt64(x)), typeof(U));
+            return Task.FromResult((U)Convert.ChangeType(inputs.Cast<U>().Sum(x => Convert.ToInt64(x)), typeof(U)));
         }
     }
 }

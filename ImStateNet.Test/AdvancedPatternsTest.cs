@@ -17,14 +17,14 @@ namespace ImStateNet.Test
     public class AdvancedPatternsTest
     {
         [TestMethod]
-        public void TestMergeChanges()
+        public async Task TestMergeChanges()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = builder.AddInput(new InputNode<int>(), 2);
             var val3 = builder.AddInput(new InputNode<int>(), 3);
             var result = builder.AddCalculation(new SumNode<int>(new List<AbstractNode<int>> { val1, val2, val3 }));
-            var state1 = builder.Build();
+            var state1 = await builder.BuildAndCommit();
 
             var state2 = state1.ChangeValue(val1, 5);
 
@@ -36,7 +36,7 @@ namespace ImStateNet.Test
             Assert.AreEqual(6, merged.GetValue(val2));
             Assert.AreEqual(3, merged.GetValue(val3));
 
-            (merged, _) = merged.Commit();
+            (merged, _) = await merged.Commit();
 
             var conflict = state1.ChangeValue(val2, 7);
 
@@ -46,20 +46,20 @@ namespace ImStateNet.Test
         }
 
         [TestMethod]
-        public void TestRebaseChanges()
+        public async Task TestRebaseChanges()
         {
             var builder = new StateBuilder();
             var val1 = builder.AddInput(new InputNode<int>(), 1);
             var val2 = builder.AddInput(new InputNode<int>(), 2);
             var val3 = builder.AddInput(new InputNode<int>(), 3);
             var result = builder.AddCalculation(new SumNode<int>(new List<AbstractNode<int>> { val1, val2, val3 }));
-            var state1 = builder.Build();
+            var state1 = await builder.BuildAndCommit();
 
-            var (state2, _) = state1.ChangeValue(val1, 5).Commit();
+            var (state2, _) = await state1.ChangeValue(val1, 5).Commit();
 
             var state3 = state1.ChangeValue(val2, 6);
 
-            var (state4, _) = state2.ChangeValue(val3, 3).Commit();
+            var (state4, _) = await state2.ChangeValue(val3, 3).Commit();
 
             var rebased = RebaseChanges(state3, state4);
 
@@ -72,7 +72,7 @@ namespace ImStateNet.Test
 
             Assert.ThrowsException<InvalidOperationException>(() => RebaseChanges(state4, state3));
 
-            Assert.ThrowsException<InvalidOperationException>(() => RebaseChanges(differentStateBuilder.Build(), state4));
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () => RebaseChanges(await differentStateBuilder.BuildAndCommit(), state4));
         }
 
         public static State MergeChanges(State state1, State state2)
