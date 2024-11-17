@@ -36,7 +36,7 @@
         public TDerivedNode AddCalculation<TDerivedNode>(TDerivedNode node) where TDerivedNode : IDerivedNode
         {
             _nodes.Add(node);
-            _initialValues[node] = node.DefaultValue;
+            _initialValues[node] = node.DefaultObjectValue;
             return node;
         }
 
