@@ -5,14 +5,26 @@ namespace ImStateNet.Mutable
     public class StateMut
     {
         private readonly object _lock = new object();
+        private readonly TaskDispatcher _commitDispatcher = new TaskDispatcher();
+
+        private readonly bool _continueWithAbortedCalculations;
         private State _state;
-        private CancellationTokenSource _cancelPreviousCommit = new CancellationTokenSource();
 
         private int _numberOfAutoCommitSuspenders = 0;
 
-        public StateMut()
+        /// <summary>
+        /// Creates a new mutable state. Use <see cref="RegisterDerived(IDerivedNode)"/>
+        /// and <see cref="RegisterInput{T}(InputNode{T}, T)"/> to build the network.
+        /// </summary>
+        /// <param name="continueWithAbortedCalculations">
+        /// If a commit happens while another commit is still in progress then the previuos commit will always be cancelled.
+        /// If this value is set then the results of the cancelled commit will be used for the next commit - as far as they already had been completed.
+        /// Otherwise the last clean commit will be used as basis for the next calculation.
+        /// </param>
+        public StateMut(bool continueWithAbortedCalculations = false)
         {
             _state = new StateBuilder().Build();
+            _continueWithAbortedCalculations = continueWithAbortedCalculations;
         }
 
 #pragma warning disable CS8601 // Possible null reference assignment.
@@ -52,41 +64,59 @@ namespace ImStateNet.Mutable
             return _state.GetValue(node);
         }
 
-        public Task SetValueAsync<T>(InputNode<T> node, T value)
+        public Task<State> SetValueAsync<T>(InputNode<T> node, T value, bool allowCancellation = true)
         {
             lock (_lock)
             {
                 _state = _state.ChangeValue(node, value);
                 if (_numberOfAutoCommitSuspenders > 0)
                 {
-                    return Task.CompletedTask;
+                    return Task.FromResult(_state);
                 }
 
-                return CommitAsync();
+                return CommitAsync(allowCancellation);
             }
         }
 
-        private Task CommitAsync()
+        public Task<State> CommitAsync(bool allowCancellation = true)
         {
-            _cancelPreviousCommit.Cancel();
-            var tokenSource = new CancellationTokenSource();
-            _cancelPreviousCommit = tokenSource;
-            var token = tokenSource.Token;
-            return Task.Run(() =>
+            lock (_lock)
             {
-                (var stateUpdate, var changes) = _state.Commit(token);
-                lock (_lock)
+                var tokenSource = new CancellationTokenSource();
+                var token = tokenSource.Token;
+                return _commitDispatcher.EnqueueTask(() => UpdateState(token, allowCancellation), tokenSource);
+            }
+        }
+
+        private State UpdateState(CancellationToken token, bool allowCancellation)
+        {
+            (var stateUpdate, var changes) = _state.Commit(allowCancellation ? token : null);
+            lock (_lock)
+            {
+                if (token.IsCancellationRequested)
                 {
-                    if (token.IsCancellationRequested)
+                    if (!_continueWithAbortedCalculations)
                     {
-                        return;
+                        return stateUpdate;
                     }
 
+                    foreach (var change in _state.Changes.OfType<IInputNode>())
+                    {
+                        stateUpdate = stateUpdate.ChangeObjectValue(change, _state.GetObjValue(change));
+                    }
+                }
+                else
+                {
                     _state = stateUpdate;
                 }
+            }
 
+            if (!token.IsCancellationRequested)
+            {
                 OnStateChanged?.Invoke(this, changes);
-            });
+            }
+
+            return stateUpdate;
         }
 
         public bool IsConsistent => _state.IsConsistent;

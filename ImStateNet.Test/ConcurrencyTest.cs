@@ -7,9 +7,22 @@ namespace ImStateNet.Test
     public class ConcurrencyTest
     {
         [TestMethod]
-        public void StateConcurrencyTest()
+        public Task StateConcurrencyTest()
         {
             var state = new StateMut();
+            return RunConcurrencyTestOnState(state);
+        }
+
+        [TestMethod]
+        public Task StateWhichUsesCancelledCalculationsConcurrencyTest()
+        {
+            var state = new StateMut(true);
+            return RunConcurrencyTestOnState(state);
+        }
+
+
+        private async Task RunConcurrencyTestOnState(StateMut state)
+        {
             var inputs = Enumerable.Range(1, 128).Select(_ => new InputPropertyWithState(state)).ToList();
             using var allNodes = new DisposableList(inputs);
             List<IValueChangeTriggerWithState> lastLevel = new List<IValueChangeTriggerWithState>(inputs);
@@ -46,11 +59,7 @@ namespace ImStateNet.Test
             }
 
             Task.WaitAll(tasks.ToArray());
-
-            while (!state.IsConsistent)
-            {
-                Thread.Sleep(10);
-            }
+            await state.CommitAsync(allowCancellation: false);
 
             var expectedSum = lastValues.Values.Sum();
             Assert.AreEqual(expectedSum, lastSum.Value);
