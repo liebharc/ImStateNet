@@ -176,23 +176,13 @@
 
             IntermediateCommitResult ProcessNode(IDerivedNode node)
             {
-                if (cancellation.IsCancellationRequested)
-                {
-                    return new IntermediateCommitResult
-                    {
-                        Node = node,
-                        NewValue = null,
-                        HasChanged = false,
-                        IsUnprocessed = true
-                    };
-                }
-
                 var anyDepsChanged = changes.Contains(node) || !changes.Intersect(node.Dependencies).IsEmpty;
                 if (node.IsLazy)
                 {
                     return new IntermediateCommitResult
                     {
                         Node = node,
+                        // NewValue doesn't matter if HasChanged is set to false
                         NewValue = LazyValue,
                         // If the dependencies of a lazy node have changed, then the lazy node 
                         // might produce a different value
@@ -209,6 +199,17 @@
                         NewValue = null,
                         HasChanged = false,
                         IsUnprocessed = false
+                    };
+                }
+
+                if (cancellation.IsCancellationRequested)
+                {
+                    return new IntermediateCommitResult
+                    {
+                        Node = node,
+                        NewValue = null,
+                        HasChanged = false,
+                        IsUnprocessed = true
                     };
                 }
 
