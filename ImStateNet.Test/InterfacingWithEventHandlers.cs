@@ -111,6 +111,50 @@ namespace ImStateNet.Test
         AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
     }
 
+    /// <summary>
+    /// Illustrates how a calculation can combine state and non-state inputs. However the 
+    /// class is then responsible for thread-safety.
+    /// </summary>
+    public class MixedDependenciesSumEventHandler: DerivedNodeMut<int>, IValueChangeTriggerWithState
+    {
+        private readonly StateMut _state;
+        private readonly IValueChangeTrigger[] _triggers;
+
+        public MixedDependenciesSumEventHandler(StateMut state, IValueChangeTriggerWithState[] stateBasedTriggers, IValueChangeTrigger[] triggers)
+        {
+            _state = state;
+            _triggers = triggers;
+            foreach (var trigger in triggers) {
+                trigger.ValueChanged += OnValueChanged;
+            }
+            Init(state, LambdaCalcNode.Create(stateBasedTriggers.Select(t => t.Node).ToList(), CalculateSum));
+        }
+
+        private void OnValueChanged(object? sender, EventArgs e)
+        {
+            _state.MarkAsChanged(Node);
+        }
+
+        protected virtual Task<int> CalculateSum(IReadOnlyList<int> inputs)
+        {
+            var sum = inputs.Sum() + _triggers.Select(t => t.Value).Sum();
+            return Task.FromResult(sum);
+        }
+
+        AbstractNode<int> IValueChangeTriggerWithState.Node => Node;
+
+        protected override void Dispose(bool disposing)
+        {
+            foreach (var trigger in _triggers)
+            {
+                trigger.ValueChanged -= OnValueChanged;
+            }
+
+            base.Dispose(disposing);
+        }
+    }
+
+
     public sealed class FloatInputPropertyWithState : InputNodeMut<float>
     {
         public FloatInputPropertyWithState(StateMut state) : base(state, new InputNode<float>())

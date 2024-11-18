@@ -66,6 +66,22 @@
             return new State(_metaInfo, values, changes, _initialValues, _versionId);
         }
 
+        /// <summary>
+        /// Marks a node as having changed. This can be useful if
+        /// a node has an input which is not part of the state and this input 
+        /// has changed.
+        /// 
+        /// The state pattern requires nodes to be pure function to guarantee thread
+        /// safety and all inputs must be part of state. If this isn't true then the
+        /// node itself must guarantee thread safetey.
+        /// </summary>
+        /// <param name="node">The node which will be considered as changed.</param>
+        public State MarkAsChanged(INode node)
+        {
+            var changes = _changes.Add(node);
+            return new State(_metaInfo, _values, changes, _initialValues, _versionId);
+        }
+
         public T? GetValue<T>(AbstractNode<T> node)
         {
             return (T?)GetObjValue(node);

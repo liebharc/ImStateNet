@@ -73,5 +73,24 @@ namespace ImStateNet.Test
             await val1.SetValueAsync(1);
             Assert.AreEqual(sum.Value, 8);
         }
+
+        /// <summary>
+        /// This test illustrates how state can be connected with regular objects.
+        /// </summary>
+        [TestMethod]
+        public async Task MixedApproachTest()
+        {
+            var state = new StateMut();
+            var val1 = new InputProperty();
+            using var val2 = new InputPropertyWithState(state);
+            using var intermediateSum = new MixedDependenciesSumEventHandler(state, new IValueChangeTriggerWithState[] { val2 }, new IValueChangeTrigger[] { val1 });
+            using var val3 = new FloatInputPropertyWithState(state);
+            using var sum = new AddFloatWithIntNode(state, val3.Node, intermediateSum.Node);
+            await val3.SetValueAsync((float)5.5);
+            await val2.SetValueAsync(2);
+            val1.Value = 1;
+            await state.WaitForAllPendingCalculationsToFinish();
+            Assert.AreEqual(sum.Value, 8);
+        }
     }
 }
