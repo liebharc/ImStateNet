@@ -47,7 +47,7 @@
                     continue;
                 }
 
-                int level = derivedNode.Dependencies.Max(dep => GetLevel(dep) + 1);
+                int level = GetNextLevel(derivedNode.Dependencies);
                 nodeLevels[node] = level;
 
                 while (levels.Count <= level)
@@ -57,6 +57,16 @@
             }
 
             return levels;
+
+            int GetNextLevel(IReadOnlyList<INode> dependencies)
+            {
+                if (!dependencies.Any())
+                {
+                    return 0;
+                }
+
+                return dependencies.Max(dep => GetLevel(dep) + 1)
+            }
 
             int GetLevel(INode node)
             {

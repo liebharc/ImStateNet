@@ -27,6 +27,8 @@ namespace ImStateNet.Mutable
             ContinueWithAbortedCalculations = continueWithAbortedCalculations;
         }
 
+        public bool HasChanged(INode stateNode) => _state.Changes.Contains(stateNode);
+
         public bool IsConsistent => _state.IsConsistent;
 
         public EventHandler<StateChangedEventArgs>? OnStateChanged;
@@ -53,14 +55,22 @@ namespace ImStateNet.Mutable
         /// <param name="inputNode">The input node.</param>
         /// <param name="initialValue">Initial value.</param>
 #pragma warning disable CS8601 // Possible null reference assignment.
-        public Task RegisterInput<T>(InputNode<T> inputNode, T initialValue = default)
+        public Task RegisterInput<T>(InputNode<T> inputNode, T initialValue = default, bool skipCommit = false)
 #pragma warning restore CS8601 // Possible null reference assignment.
         {
             return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.AddInput(inputNode, initialValue);
-                _state = await builder.BuildAndCommit();
+                if (skipCommit)
+                {
+                    _state = builder.Build();
+                }
+                else
+                {
+                    _state = await builder.BuildAndCommit();
+                }
+
                 return _state;
             }, new CancellationTokenSource());
         }
@@ -68,14 +78,22 @@ namespace ImStateNet.Mutable
         /// <summary>
         /// Registers a derived node.
         /// </summary>
-        /// <param name="derivedNode">Dervied node.</param>
-        public Task RegisterDerived(IDerivedNode derivedNode)
+        /// <param name="derivedNode">Derived node.</param>
+        public Task RegisterDerived(IDerivedNode derivedNode, bool skipCommit = false)
         {
             return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.AddCalculation(derivedNode);
-                _state = await builder.BuildAndCommit();
+                if (skipCommit)
+                {
+                    _state = builder.Build();
+                }
+                else
+                {
+                    _state = await builder.BuildAndCommit();
+                }
+
                 return _state;
             }, new CancellationTokenSource());
         }
@@ -84,13 +102,21 @@ namespace ImStateNet.Mutable
         /// Removes a node. All nodes depending on this note will also be removed.
         /// </summary>
         /// <param name="node">Node to be removed.</param>
-        public Task RemoveNodeAndItsDependencies(INode node)
+        public Task RemoveNodeAndItsDependencies(INode node, bool skipCommit = false)
         {
             return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 builder.RemoveNodeAndAllDependents(node);
-                _state = await builder.BuildAndCommit();
+                if (skipCommit)
+                {
+                    _state = builder.Build();
+                }
+                else
+                {
+                    _state = await builder.BuildAndCommit();
+                }
+
                 return _state;
             }, new CancellationTokenSource());
         }
@@ -100,13 +126,21 @@ namespace ImStateNet.Mutable
         /// as this way the state doesn't need to calculate the intermediate values.
         /// </summary>
         /// <param name="stateBuilder">Alter the state builder to change the configuration.</param>
-        public Task RegisterNodes(Action<StateBuilder> stateBuilder)
+        public Task RegisterNodes(Action<StateBuilder> stateBuilder, bool skipCommit = false)
         {
             return _commitDispatcher.EnqueueTask(async () =>
             {
                 var builder = _state.ChangeConfiguration();
                 stateBuilder(builder);
-                _state = await builder.BuildAndCommit();
+                if (skipCommit)
+                {
+                    _state = builder.Build();
+                }
+                else
+                {
+                    _state = await builder.BuildAndCommit();
+                }
+
                 return _state;
             }, new CancellationTokenSource());
         }
@@ -182,7 +216,7 @@ namespace ImStateNet.Mutable
             }
         }
 
-        private Task<State> CommitAsync(bool allowCancellation = true)
+        public Task<State> CommitAsync(bool allowCancellation = true)
         {
             lock (_lock)
             {
