@@ -9,8 +9,7 @@
         public CalculationNodesNetwork(ImmutableList<INode> nodes)
         {
             Nodes = nodes;
-            Levels = GetLevels(nodes);
-            _nodeToLevel = ReverseLevels(Levels);
+            (Levels, _nodeToLevel) = GetLevelsAndReverseLevels(nodes);
         }
 
         public ImmutableList<INode> Nodes { get; }
@@ -35,10 +34,11 @@
             throw new InvalidOperationException(node.Name + " is not part of state");
         }
 
-        private static IReadOnlyList<IReadOnlyList<IDerivedNode>> GetLevels(IEnumerable<INode> nodes)
+        private static (IReadOnlyList<IReadOnlyList<IDerivedNode>> levels, IDictionary<INode, int> reverseLevels) GetLevelsAndReverseLevels(ImmutableList<INode> nodes)
         {
             var levels = new List<List<IDerivedNode>>();
             var nodeLevels = new Dictionary<INode, int>();
+            var reverseLevels = new Dictionary<INode, int>(nodes.Count);
 
             foreach (var node in nodes)
             {
@@ -54,46 +54,32 @@
                     levels.Add(new List<IDerivedNode>());
 
                 levels[level].Add(derivedNode);
-            }
 
-            return levels;
+                // Directly populate reverseLevels while building levels
+                reverseLevels[node] = level;
 
-            int GetNextLevel(IReadOnlyList<INode> dependencies)
-            {
-                if (!dependencies.Any())
+                int GetNextLevel(IReadOnlyList<INode> dependencies)
                 {
+                    if (!dependencies.Any())
+                    {
+                        return 0;
+                    }
+
+                    return dependencies.Max(dep => GetLevel(dep) + 1);
+                }
+
+                int GetLevel(INode node)
+                {
+                    if (node is IDerivedNode)
+                    {
+                        return nodeLevels[node];
+                    }
+
                     return 0;
                 }
-
-                return dependencies.Max(dep => GetLevel(dep) + 1)
             }
 
-            int GetLevel(INode node)
-            {
-                if (node is IDerivedNode derivedNode)
-                {
-                    return nodeLevels[node];
-                }
-
-                return 0;
-            }
-        }
-
-        private static IDictionary<INode, int> ReverseLevels(IReadOnlyList<IReadOnlyList<IDerivedNode>> levels)
-        {
-            var result = new Dictionary<INode, int>();
-            int levelNumber = 0;
-            foreach (var level in levels)
-            {
-                foreach (var node in level)
-                {
-                    result.Add(node, levelNumber);
-                }
-
-                levelNumber++;
-            }
-
-            return result;
+            return (levels, reverseLevels);
         }
     }
 }

@@ -309,7 +309,28 @@
             var nodes = _metaInfo.Nodes;
             return new StateBuilder(nodes, _initialValues, nodes.Where(n => !_changes.Contains(n)).ToHashSet());
         }
+
+        public State ChangeConfigurationTo(State targetConfiguration)
+        {
+            var values = targetConfiguration._values;
+            foreach (var node in targetConfiguration._metaInfo.Nodes)
+            {
+                if (_values.TryGetValue(node, out var value))
+                {
+                    values = values.SetItem(node, value);
+                }
+            }
+
+            var changes = targetConfiguration._changes;
+            foreach (var change in _changes)
+            {
+                changes = changes.Add(change);
+            }
+
+            return new State(targetConfiguration._metaInfo, values, changes);
+        }
     }
+}
 
     public readonly struct IntermediateCommitResult
     {
